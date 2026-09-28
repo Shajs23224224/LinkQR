@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("com.google.devtools.ksp")
 }
 
 android {
@@ -37,6 +38,11 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.navigation:navigation-compose:2.9.5")
     implementation("com.google.zxing:core:3.5.3")
+
+    val roomVersion = "2.8.5"
+    implementation("androidx.room:room-runtime:$roomVersion")
+    implementation("androidx.room:room-ktx:$roomVersion")
+    ksp("androidx.room:room-compiler:$roomVersion")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
