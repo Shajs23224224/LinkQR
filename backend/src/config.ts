@@ -9,4 +9,6 @@ const schema = z.object({
   DATABASE_PATH: z.string().min(1).default("./linkqr-billing.db")
 });
 
-export const config = schema.parse(process.env);
+export function loadConfig() {
+  return schema.parse(process.env);
+}
