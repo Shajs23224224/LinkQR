@@ -605,6 +605,98 @@ describe("SaaS sync conflicts and tombstones", () => {
     await app.close();
   });
 
+  it("returns a sync conflict for a stale tombstone resurrection even at quota", async () => {
+    const saasStore = createFakeSaaSStore();
+    const app = createApp(saasStore);
+    const headers = { "x-linkqr-api-key": "test-key" };
+
+    const workspace = (await app.inject({
+      method: "POST",
+      url: "/v1/saas/workspaces",
+      headers,
+      payload: { name: "Tombstone quota workspace", plan: "FREE" }
+    })).json().workspace as Workspace;
+
+    const active = await app.inject({
+      method: "POST",
+      url: "/v1/saas/workspaces/" + workspace.id + "/qr",
+      headers,
+      payload: {
+        recordId: "qr-active",
+        type: "TEXT",
+        payload: "active",
+        createdAt: 100,
+        updatedAt: 100,
+        isFavorite: false,
+        foregroundColor: "#000000",
+        backgroundColor: "#FFFFFF",
+        marginModules: 4,
+        version: 1,
+        deviceId: "device-a",
+        deleted: false,
+        deletedAt: null
+      }
+    });
+
+    const tombstone = await app.inject({
+      method: "POST",
+      url: "/v1/saas/workspaces/" + workspace.id + "/qr",
+      headers,
+      payload: {
+        recordId: "qr-delete",
+        type: "TEXT",
+        payload: "deleted",
+        createdAt: 200,
+        updatedAt: 200,
+        isFavorite: false,
+        foregroundColor: "#000000",
+        backgroundColor: "#FFFFFF",
+        marginModules: 4,
+        version: 2,
+        deviceId: "device-b",
+        deleted: true,
+        deletedAt: 300
+      }
+    });
+
+    const staleResurrection = await app.inject({
+      method: "POST",
+      url: "/v1/saas/workspaces/" + workspace.id + "/qr",
+      headers,
+      payload: {
+        recordId: "qr-delete",
+        type: "TEXT",
+        payload: "resurrected",
+        createdAt: 200,
+        updatedAt: 250,
+        isFavorite: false,
+        foregroundColor: "#000000",
+        backgroundColor: "#FFFFFF",
+        marginModules: 4,
+        version: 1,
+        deviceId: "device-a",
+        deleted: false,
+        deletedAt: null
+      }
+    });
+
+    expect(active.statusCode).toBe(200);
+    expect(tombstone.statusCode).toBe(200);
+    expect(staleResurrection.statusCode).toBe(409);
+    expect(staleResurrection.json()).toMatchObject({
+      synced: false,
+      error: "SYNC_CONFLICT",
+      winner: {
+        recordId: "qr-delete",
+        deleted: true,
+        version: 2,
+        deviceId: "device-b"
+      }
+    });
+
+    await app.close();
+  });
+
   it("keeps tombstones in sync but excludes them from active quota/listing", async () => {
     const saasStore = createFakeSaaSStore();
     const app = createApp(saasStore);
