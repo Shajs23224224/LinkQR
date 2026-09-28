@@ -55,6 +55,8 @@ Implement → compile → test → fix → freeze → next phase.
 12. Publication
 13. SaaS preparation
 14. Functional user authentication
+15. Android authentication integration
+16. Optional SaaS synchronization
 
 
 ## Phase 8 — FREE monetization
@@ -188,34 +190,27 @@ Phase 13 adds a backend foundation for a future cloud version of LinkQR without 
 The Android application remains offline-first. The SaaS API is preparation for a future authenticated cloud product and is not yet exposed as an end-user account system.
 
 
-## Phase 14 — Autenticación de usuarios funcional
+## Phase 16 — Sincronización SaaS opcional
 
-Phase 14 adds the backend identity layer required for the SaaS product.
+Phase 16 connects the authenticated Android account with the existing SaaS workspace API while preserving the offline-first architecture.
 
 ### Included
 
-- User registration with normalized email.
-- Secure password hashing with Node.js scrypt and per-password salt.
-- Login with server-side opaque sessions.
-- 30-day configurable session lifetime.
-- Current-user endpoint and logout/revocation.
-- SQLite persistence for users and sessions.
-- Workspace ownership tied to the authenticated user.
-- Cross-user workspace isolation.
-- Authenticated Google Play purchase attribution.
-- Client users cannot self-assign the PRO plan.
-- Legacy server-to-server API-key access remains available for controlled administration.
+- Authenticated Android SaaS client using the bearer session token from Phase 15.
+- Automatic creation of the user's first FREE workspace as **Mi LinkQR**.
+- Stable `remoteRecordId`, `remoteVersion`, `updatedAt` and `syncDirty` state in Room.
+- Push of local changes only when dirty.
+- Pull of active cloud records and tombstones.
+- Remote deletion propagation using tombstones.
+- Optimistic versioning with deterministic last-write-wins conflict handling.
+- Automatic application of the winning remote state after a synchronization conflict.
+- Manual synchronization from **Mi cuenta → Sincronizar QR**.
+- QR generation, history, favorites and scanning remain independent of network availability.
 
-### Authentication endpoints
+### Sync safety
 
-When LINKQR_AUTH_ENABLED=true:
+A stale device cannot silently overwrite a newer cloud state. Mutations carry their known `baseVersion`; the backend advances a record version for accepted changes and returns the current winning record on `SYNC_CONFLICT`.
 
-- POST /v1/auth/register
-- POST /v1/auth/login
-- GET /v1/auth/me
-- POST /v1/auth/logout
+Deleted synchronized records remain as tombstones instead of disappearing from the server, preventing offline devices from resurrecting them.
 
-Android now includes a functional account screen with registration, login, session restoration and logout. Authentication remains optional: QR generation, history, favorites and scanning continue to work offline without an account.
-
-
-See `docs/AUTH.md` for the authentication flow and deployment configuration.
+See `docs/SYNC.md` for the complete synchronization protocol.

@@ -17,7 +17,7 @@ export const WorkspaceCreateSchema = z.object({
   plan: SaaSPlanSchema.default("FREE")
 });
 
-export const WorkspaceQrRecordSchema = z.object({
+const qrContentFields = {
   recordId: z.string().trim().min(1).max(128),
   type: z.string().trim().min(1).max(32),
   payload: z.string().min(1).max(2048),
@@ -26,6 +26,19 @@ export const WorkspaceQrRecordSchema = z.object({
   foregroundColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
   backgroundColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
   marginModules: z.number().int().min(1).max(8)
+};
+
+export const WorkspaceQrRecordSchema = z.object(qrContentFields);
+
+export const WorkspaceQrUpsertSchema = z.object({
+  ...qrContentFields,
+  baseVersion: z.number().int().nonnegative().default(0),
+  updatedAt: z.number().int().nonnegative().optional()
+});
+
+export const WorkspaceQrDeleteSchema = z.object({
+  baseVersion: z.number().int().nonnegative().default(0),
+  updatedAt: z.number().int().nonnegative().optional()
 });
 
 export type Workspace = {
@@ -39,3 +52,23 @@ export type Workspace = {
 export type WorkspaceQrRecord = z.infer<typeof WorkspaceQrRecordSchema> & {
   workspaceId: string;
 };
+
+export type WorkspaceQrSyncRecord = WorkspaceQrRecord & {
+  version: number;
+  updatedAt: number;
+  deleted: boolean;
+};
+
+export type SaaSSyncMutationResult =
+  | {
+      status: "accepted";
+      record: WorkspaceQrSyncRecord;
+    }
+  | {
+      status: "conflict";
+      record: WorkspaceQrSyncRecord;
+    }
+  | {
+      status: "quota";
+      limit: number;
+    };
