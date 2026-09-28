@@ -13,7 +13,10 @@ class AppContainer(context: Context) {
         LinkQrDatabase::class.java,
         "linkqr.db"
     )
-        .addMigrations(LinkQrDatabaseMigrations.MIGRATION_1_2)
+        .addMigrations(
+            LinkQrDatabaseMigrations.MIGRATION_1_2,
+            LinkQrDatabaseMigrations.MIGRATION_2_3
+        )
         .build()
 
     val qrHistoryRepository: QrHistoryRepository =
