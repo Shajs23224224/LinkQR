@@ -5,12 +5,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.navigation.compose.rememberNavController
 import com.linkqr.auth.AuthApi
 import com.linkqr.auth.AuthManager
+import com.linkqr.auth.AuthState
+import com.linkqr.data.sync.SaaSSyncManager
 import com.linkqr.auth.AuthTokenStore
 import com.linkqr.core.di.AppContainer
 import com.linkqr.core.navigation.LinkQrNavHost
@@ -37,6 +40,13 @@ class MainActivity : ComponentActivity() {
         )
     }
 
+    private val syncManager by lazy {
+        SaaSSyncManager(
+            context = applicationContext,
+            repository = appContainer.qrHistoryRepository
+        )
+    }
+
     private val billingManager by lazy {
         PlayBillingManager(applicationContext) { isPro ->
             entitlementManager.setProEnabled(isPro)
@@ -51,6 +61,12 @@ class MainActivity : ComponentActivity() {
             val entitlementPlan by entitlementManager.plan.collectAsState()
             val billingState by billingManager.state.collectAsState()
             val authState by authManager.state.collectAsState()
+
+            LaunchedEffect(authState) {
+                if (authState is AuthState.Authenticated) {
+                    runCatching { syncManager.sync() }
+                }
+            }
 
             MaterialTheme {
                 Surface {
@@ -107,6 +123,7 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         billingManager.endConnection()
         authManager.close()
+        appContainer.close()
         super.onDestroy()
     }
 }
