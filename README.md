@@ -254,3 +254,26 @@ Phase 17 convierte la preparación de Fase 16 en un protocolo de sincronización
 
 See docs/PHASE-17.md for the exact protocol and deferred scaling work.
 
+
+
+## Arquitectura futura — Fases 18–30
+
+La Fase 17 cierra el núcleo de sincronización multi-dispositivo. A partir de aquí, el desarrollo se divide en cuatro bloques: endurecimiento de producción, seguridad/operación SaaS, escalabilidad y evolución del producto.
+
+- **Fase 18:** hardening y Release Candidate 1.0.
+- **Fase 19:** seguridad avanzada de identidad: verificación de correo, recuperación de contraseña, sesiones, rate limiting y MFA.
+- **Fase 20:** sincronización resiliente con WorkManager, reintentos, cursors y background sync.
+- **Fase 21:** observabilidad, métricas, logging estructurado, health/readiness y alertas.
+- **Fase 22:** arquitectura de persistencia escalable y preparación para PostgreSQL cuando los datos lo justifiquen.
+- **Fase 23:** API idempotente, rate limiting distribuido, versionado, paginación y contratos robustos.
+- **Fase 24:** billing y entitlements PRO verificados por servidor.
+- **Fase 25:** privacidad, retención, exportación y eliminación de datos.
+- **Fase 26:** pruebas de carga, estrés, soak y medición de capacidad.
+- **Fase 27:** calidad Android de producción, accesibilidad y matriz de dispositivos.
+- **Fase 28:** Dynamic QR y analítica.
+- **Fase 29:** panel administrativo, RBAC y soporte operativo.
+- **Fase 30:** alta disponibilidad, backups, recuperación y continuidad.
+
+La arquitectura detallada, dependencias y gates de salida están en [docs/ROADMAP-18-ONWARD.md](docs/ROADMAP-18-ONWARD.md).
+
+La regla del proyecto permanece: **implementar → compilar → probar → revisar → corregir → congelar → siguiente fase**.
