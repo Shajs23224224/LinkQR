@@ -108,6 +108,7 @@ dependencies {
     val roomVersion = "2.8.5"
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
+    implementation("androidx.work:work-runtime:2.12.0")
     ksp("androidx.room:room-compiler:$roomVersion")
 
     implementation("com.google.android.gms:play-services-ads:25.5.0")
