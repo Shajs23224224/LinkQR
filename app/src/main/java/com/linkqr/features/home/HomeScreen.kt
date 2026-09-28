@@ -26,6 +26,7 @@ fun HomeScreen(
     onPro: () -> Unit,
     onAccount: () -> Unit,
     accountEmail: String? = null,
+    isPro: Boolean = false,
     showAds: Boolean = false,
     showRewardedAdOption: Boolean = false,
     onWatchRewardedAd: () -> Unit = {},
@@ -48,6 +49,18 @@ fun HomeScreen(
             text = "Genera, guarda y administra tus códigos QR sin conexión.",
             style = MaterialTheme.typography.bodyLarge
         )
+
+        Text(
+            text = if (isPro) "LINKQR PRO · ACTIVO" else "LINKQR FREE",
+            style = MaterialTheme.typography.labelLarge
+        )
+
+        if (isPro) {
+            Text(
+                text = "Experiencia sin publicidad.",
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
 
         OutlinedButton(
             onClick = onAccount,
