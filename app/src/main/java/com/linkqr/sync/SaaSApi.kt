@@ -16,7 +16,7 @@ data class SaaSWorkspace(
     val createdAt: Long
 )
 
-data class SaaSQrRecord(
+data class SaaSSyncRecord(
     val recordId: String,
     val type: String,
     val payload: String,
@@ -24,13 +24,17 @@ data class SaaSQrRecord(
     val isFavorite: Boolean,
     val foregroundColor: String,
     val backgroundColor: String,
-    val marginModules: Int
+    val marginModules: Int,
+    val version: Long,
+    val updatedAt: Long,
+    val deleted: Boolean
 )
 
 class SaaSApiException(
     val statusCode: Int,
-    val errorCode: String
-) : IOException("SaaS request failed: $statusCode/$errorCode")
+    val errorCode: String,
+    val responseBody: String = ""
+) : IOException("SaaS request failed: " + statusCode + "/" + errorCode)
 
 class SaaSApi(
     private val baseUrl: String = BuildConfig.SAAS_BASE_URL
@@ -54,19 +58,19 @@ class SaaSApi(
         return parseWorkspace(JSONObject(response).getJSONObject("workspace"))
     }
 
-    suspend fun listQrRecords(
+    suspend fun listQrSyncRecords(
         token: String,
         workspaceId: String
-    ): List<SaaSQrRecord> {
+    ): List<SaaSSyncRecord> {
         val response = request(
-            "GET",
-            "/v1/saas/workspaces/$workspaceId/qr",
+            method = "GET",
+            path = "/v1/saas/workspaces/" + workspaceId + "/qr/sync",
             token = token
         )
         val records = JSONObject(response).optJSONArray("records") ?: JSONArray()
         return buildList(records.length()) {
             for (index in 0 until records.length()) {
-                add(parseQrRecord(records.getJSONObject(index)))
+                add(parseSyncRecord(records.getJSONObject(index)))
             }
         }
     }
@@ -74,11 +78,12 @@ class SaaSApi(
     suspend fun upsertQrRecord(
         token: String,
         workspaceId: String,
-        record: SaaSQrRecord
-    ) {
-        request(
+        record: SaaSSyncRecord,
+        baseVersion: Long
+    ): SaaSSyncRecord {
+        val response = request(
             method = "POST",
-            path = "/v1/saas/workspaces/$workspaceId/qr",
+            path = "/v1/saas/workspaces/" + workspaceId + "/qr",
             token = token,
             body = JSONObject()
                 .put("recordId", record.recordId)
@@ -89,8 +94,41 @@ class SaaSApi(
                 .put("foregroundColor", record.foregroundColor)
                 .put("backgroundColor", record.backgroundColor)
                 .put("marginModules", record.marginModules)
+                .put("baseVersion", baseVersion)
+                .put("updatedAt", record.updatedAt)
                 .toString()
         )
+        return parseSyncRecord(JSONObject(response).getJSONObject("record"))
+    }
+
+    suspend fun deleteQrRecord(
+        token: String,
+        workspaceId: String,
+        record: SaaSSyncRecord,
+        baseVersion: Long
+    ): SaaSSyncRecord {
+        val response = request(
+            method = "DELETE",
+            path = "/v1/saas/workspaces/" + workspaceId + "/qr/" + record.recordId,
+            token = token,
+            body = JSONObject()
+                .put("baseVersion", baseVersion)
+                .put("updatedAt", record.updatedAt)
+                .toString()
+        )
+        return parseSyncRecord(JSONObject(response).getJSONObject("record"))
+    }
+
+    fun parseSyncConflict(exception: SaaSApiException): SaaSSyncRecord? {
+        if (exception.statusCode != 409 || exception.errorCode != "SYNC_CONFLICT") {
+            return null
+        }
+
+        return runCatching {
+            parseSyncRecord(
+                JSONObject(exception.responseBody).getJSONObject("record")
+            )
+        }.getOrNull()
     }
 
     private fun parseWorkspaces(response: String): List<SaaSWorkspace> {
@@ -110,8 +148,8 @@ class SaaSApi(
             createdAt = json.getLong("createdAt")
         )
 
-    private fun parseQrRecord(json: JSONObject): SaaSQrRecord =
-        SaaSQrRecord(
+    private fun parseSyncRecord(json: JSONObject): SaaSSyncRecord =
+        SaaSSyncRecord(
             recordId = json.getString("recordId"),
             type = json.getString("type"),
             payload = json.getString("payload"),
@@ -119,7 +157,10 @@ class SaaSApi(
             isFavorite = json.getBoolean("isFavorite"),
             foregroundColor = json.getString("foregroundColor"),
             backgroundColor = json.getString("backgroundColor"),
-            marginModules = json.getInt("marginModules")
+            marginModules = json.getInt("marginModules"),
+            version = json.getLong("version"),
+            updatedAt = json.getLong("updatedAt"),
+            deleted = json.getBoolean("deleted")
         )
 
     private suspend fun request(
@@ -136,7 +177,7 @@ class SaaSApi(
                 readTimeout = 10_000
                 useCaches = false
                 setRequestProperty("Accept", "application/json")
-                setRequestProperty("Authorization", "Bearer $token")
+                setRequestProperty("Authorization", "Bearer " + token)
 
                 if (body != null) {
                     doOutput = true
@@ -167,8 +208,7 @@ class SaaSApi(
                 val errorCode = runCatching {
                     JSONObject(response).optString("error", "REQUEST_FAILED")
                 }.getOrDefault("REQUEST_FAILED")
-
-                throw SaaSApiException(status, errorCode)
+                throw SaaSApiException(status, errorCode, response)
             }
 
             response
