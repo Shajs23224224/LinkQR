@@ -12,20 +12,18 @@ class QrBitmapRendererTest {
     }
 
     @Test
-    fun bitMatrixRendersExpectedDimensions() {
+    fun buildPixelsRendersExpectedDimensionsAndColors() {
         val matrix = BitMatrix(8, 8)
         matrix.set(2, 3)
 
-        val bitmap = QrBitmapRenderer.render(
+        val pixels = QrBitmapRenderer.buildPixels(
             matrix = matrix,
             foreground = 0xFF000000.toInt(),
             background = 0xFFFFFFFF.toInt()
         )
 
-        assertEquals(8, bitmap.width)
-        assertEquals(8, bitmap.height)
-        assertEquals(0xFF000000.toInt(), bitmap.getPixel(2, 3))
-        assertEquals(0xFFFFFFFF.toInt(), bitmap.getPixel(0, 0))
-        bitmap.recycle()
+        assertEquals(64, pixels.size)
+        assertEquals(0xFF000000.toInt(), pixels[3 * 8 + 2])
+        assertEquals(0xFFFFFFFF.toInt(), pixels[0])
     }
 }
