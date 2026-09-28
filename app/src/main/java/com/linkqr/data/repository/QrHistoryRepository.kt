@@ -2,16 +2,21 @@ package com.linkqr.data.repository
 
 import com.linkqr.data.local.QrRecordDao
 import com.linkqr.data.local.QrRecordEntity
+import com.linkqr.data.sync.CloudQrRecord
+import com.linkqr.data.sync.SyncConflictResolver
+import com.linkqr.data.sync.SyncVersion
 import com.linkqr.domain.model.QrDesign
 import com.linkqr.domain.model.QrRecord
 import com.linkqr.domain.model.QrType
+import java.util.Locale
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
 class QrHistoryRepository(
-    private val dao: QrRecordDao
+    private val dao: QrRecordDao,
+    private val deviceId: String = "legacy-device"
 ) {
 
     fun observeAll(): Flow<List<QrRecord>> =
@@ -41,7 +46,10 @@ class QrHistoryRepository(
                 backgroundColor = design.backgroundColor,
                 marginModules = design.marginModules,
                 syncId = UUID.randomUUID().toString(),
-                syncStatus = "PENDING"
+                syncStatus = "PENDING",
+                version = 1,
+                deviceId = deviceId,
+                deletedAt = null
             )
         )
     }
@@ -51,31 +59,107 @@ class QrHistoryRepository(
     }
 
     suspend fun delete(id: Long) {
-        // Hard deletion remains local until the later tombstone phase.
-        dao.deleteById(id)
+        val now = System.currentTimeMillis()
+        dao.markDeleted(id, deletedAt = now, updatedAt = now)
     }
 
     suspend fun deleteAll() {
-        // Cloud deletion propagation requires tombstones and is intentionally deferred.
-        dao.deleteAll()
+        val now = System.currentTimeMillis()
+        dao.markAllDeleted(deletedAt = now, updatedAt = now)
     }
 
     suspend fun pendingSyncRecords(): List<QrRecordEntity> {
         val pending = dao.getPendingSync()
         return pending.map { record ->
-            if (record.syncId != null) {
-                record
-            } else {
+            var normalized = record
+
+            if (normalized.syncId == null) {
                 val syncId = UUID.randomUUID().toString()
-                dao.updateSyncId(record.id, syncId)
-                record.copy(syncId = syncId)
+                dao.updateSyncId(normalized.id, syncId)
+                normalized = normalized.copy(syncId = syncId)
             }
+
+            if (normalized.deviceId.isBlank()) {
+                dao.updateDeviceId(normalized.id, deviceId)
+                normalized = normalized.copy(deviceId = deviceId)
+            }
+
+            normalized
         }
     }
 
     suspend fun markSynced(syncId: String) {
         dao.updateSyncStatus(syncId, "SYNCED")
     }
+
+    suspend fun applyRemote(remote: CloudQrRecord): Boolean {
+        val syncId = remote.recordId
+        val local = dao.findBySyncId(syncId)
+
+        if (local == null) {
+            dao.upsert(remote.toEntity(id = 0L, syncStatus = "SYNCED"))
+            return true
+        }
+
+        val comparison = SyncConflictResolver.compare(
+            SyncVersion(local.version, local.updatedAt, local.deviceId),
+            SyncVersion(remote.version, remote.updatedAt, remote.deviceId)
+        )
+
+        if (comparison > 0) {
+            return false
+        }
+
+        dao.upsert(
+            remote.toEntity(
+                id = local.id,
+                syncStatus = "SYNCED"
+            )
+        )
+        return comparison < 0 || local.syncStatus != "SYNCED"
+    }
+
+    fun toCloudRecord(entity: QrRecordEntity): CloudQrRecord =
+        CloudQrRecord(
+            workspaceId = "",
+            recordId = requireNotNull(entity.syncId),
+            type = entity.type,
+            payload = entity.payload,
+            createdAt = entity.createdAt,
+            updatedAt = entity.updatedAt,
+            isFavorite = entity.isFavorite,
+            foregroundColor = colorToHex(entity.foregroundColor),
+            backgroundColor = colorToHex(entity.backgroundColor),
+            marginModules = entity.marginModules,
+            version = entity.version,
+            deviceId = entity.deviceId,
+            deleted = entity.deletedAt != null,
+            deletedAt = entity.deletedAt
+        )
+
+    private fun CloudQrRecord.toEntity(id: Long, syncStatus: String): QrRecordEntity =
+        QrRecordEntity(
+            id = id,
+            type = type,
+            payload = payload,
+            createdAt = createdAt,
+            updatedAt = updatedAt,
+            isFavorite = isFavorite,
+            foregroundColor = parseColor(foregroundColor),
+            backgroundColor = parseColor(backgroundColor),
+            marginModules = marginModules,
+            syncId = recordId,
+            syncStatus = syncStatus,
+            version = version,
+            deviceId = deviceId,
+            deletedAt = deletedAt.takeIf { deleted } ?: null
+        )
+
+    private fun colorToHex(color: Long): String =
+        "#%06X".format(Locale.US, color and 0xFFFFFF)
+
+    private fun parseColor(value: String): Long =
+        (0xFF000000L or value.removePrefix("#").toLong(16)) 
 
     private fun toDomain(entity: QrRecordEntity): QrRecord =
         QrRecord(
