@@ -427,6 +427,10 @@ export class SaaSStore {
     };
   }
 
+  healthCheck(): void {
+    this.db.prepare("SELECT 1").get();
+  }
+
   close(): void {
     this.db.close();
   }
