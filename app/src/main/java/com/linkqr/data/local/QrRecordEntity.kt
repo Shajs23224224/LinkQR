@@ -8,7 +8,8 @@ import androidx.room.PrimaryKey
     tableName = "qr_records",
     indices = [
         Index(value = ["createdAt"]),
-        Index(value = ["remoteRecordId"], unique = true)
+        Index(value = ["remoteRecordId"], unique = true),
+        Index(value = ["syncDirty"])
     ]
 )
 data class QrRecordEntity(
@@ -21,5 +22,9 @@ data class QrRecordEntity(
     val foregroundColor: Long = 0xFF000000,
     val backgroundColor: Long = 0xFFFFFFFF,
     val marginModules: Int = 4,
-    val remoteRecordId: String? = null
+    val remoteRecordId: String? = null,
+    val remoteVersion: Long = 0,
+    val updatedAt: Long = createdAt,
+    val deletedAt: Long? = null,
+    val syncDirty: Boolean = true
 )
