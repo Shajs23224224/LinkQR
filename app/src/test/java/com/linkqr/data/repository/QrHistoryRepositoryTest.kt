@@ -2,6 +2,7 @@ package com.linkqr.data.repository
 
 import com.linkqr.data.local.QrRecordDao
 import com.linkqr.data.local.QrRecordEntity
+import com.linkqr.domain.model.QrDesign
 import com.linkqr.domain.model.QrType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,6 +37,27 @@ class QrHistoryRepositoryTest {
     }
 
     @Test
+    fun savesAndRestoresCustomDesign() = runBlocking {
+        val dao = FakeQrRecordDao()
+        val repository = QrHistoryRepository(dao)
+        val design = QrDesign(
+            foregroundColor = 0xFF123456L,
+            backgroundColor = 0xFFFFFFFFL,
+            marginModules = 6
+        )
+
+        repository.save(
+            type = QrType.TEXT,
+            payload = "Hola",
+            createdAt = 456L,
+            design = design
+        )
+
+        val record = repository.observeAll().first().single()
+        assertEquals(design, record.design)
+    }
+
+    @Test
     fun favoriteAndDeleteUpdateRepositoryState() = runBlocking {
         val dao = FakeQrRecordDao()
         val repository = QrHistoryRepository(dao)
@@ -48,6 +70,40 @@ class QrHistoryRepositoryTest {
         repository.delete(id)
 
         assertTrue(repository.observeAll().first().isEmpty())
+    }
+
+    @Test
+    fun deleteAllClearsHistoryAndFavorites() = runBlocking {
+        val dao = FakeQrRecordDao()
+        val repository = QrHistoryRepository(dao)
+
+        val firstId = repository.save(QrType.URL, "https://example.com", 1L)
+        val secondId = repository.save(QrType.TEXT, "Hola", 2L)
+        repository.setFavorite(firstId, true)
+        repository.setFavorite(secondId, true)
+
+        repository.deleteAll()
+
+        assertTrue(repository.observeAll().first().isEmpty())
+        assertTrue(repository.observeFavorites().first().isEmpty())
+    }
+
+    @Test
+    fun unknownPersistedTypeFallsBackToText() = runBlocking {
+        val dao = FakeQrRecordDao()
+        val repository = QrHistoryRepository(dao)
+
+        dao.insert(
+            QrRecordEntity(
+                id = 0L,
+                type = "UNKNOWN_TYPE",
+                payload = "legacy",
+                createdAt = 123L,
+                isFavorite = false
+            )
+        )
+
+        assertEquals(QrType.TEXT, repository.observeAll().first().single().type)
     }
 
     private class FakeQrRecordDao : QrRecordDao {
