@@ -3,11 +3,16 @@ import { buildServer } from "./server.js";
 import type { GooglePlayVerifier } from "./googlePlay.js";
 import type { PurchaseStore } from "./store.js";
 
+const options = {
+  packageName: "com.linkqr",
+  proProductId: "linkqr_pro"
+};
+
 describe("Google Play verification API", () => {
   it("rejects an unknown product", async () => {
     const verifier = {} as GooglePlayVerifier;
     const store = {} as PurchaseStore;
-    const app = buildServer(verifier, store);
+    const app = buildServer(verifier, store, options);
 
     const response = await app.inject({
       method: "POST",
@@ -43,7 +48,7 @@ describe("Google Play verification API", () => {
       save: vi.fn()
     } as unknown as PurchaseStore;
 
-    const app = buildServer(verifier, store);
+    const app = buildServer(verifier, store, options);
 
     const response = await app.inject({
       method: "POST",
@@ -83,7 +88,7 @@ describe("Google Play verification API", () => {
       save: vi.fn()
     } as unknown as PurchaseStore;
 
-    const app = buildServer(verifier, store);
+    const app = buildServer(verifier, store, options);
 
     const response = await app.inject({
       method: "POST",
