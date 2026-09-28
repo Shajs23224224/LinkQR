@@ -1,4 +1,4 @@
-import Database from "better-sqlite3";
+import type Database from "better-sqlite3";
 import type {
   SaaSPlan,
   SaaSSyncPage,
@@ -7,13 +7,14 @@ import type {
   WorkspaceQrRecord
 } from "./saas.js";
 import { compareSyncRecords } from "./saas.js";
+import type { SaaSRepository } from "./repositoryPorts.js";
+import { openSqliteDatabase, optimizeSqliteDatabase } from "./sqlite.js";
 
-export class SaaSStore {
+export class SaaSStore implements SaaSRepository {
   private readonly db: Database.Database;
 
   constructor(path: string) {
-    this.db = new Database(path);
-    this.db.pragma("journal_mode = WAL");
+    this.db = openSqliteDatabase(path);
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS workspaces (
         workspace_id TEXT PRIMARY KEY,
@@ -55,6 +56,9 @@ export class SaaSStore {
       CREATE INDEX IF NOT EXISTS idx_workspace_qr_change_workspace_seq
         ON workspace_qr_change_log(workspace_id, change_seq);
 
+      CREATE INDEX IF NOT EXISTS idx_workspace_qr_change_workspace_record_seq
+        ON workspace_qr_change_log(workspace_id, record_id, change_seq DESC);
+
     `);
 
     const columns = this.db
@@ -92,6 +96,9 @@ export class SaaSStore {
 
       CREATE INDEX IF NOT EXISTS idx_workspace_qr_sync
         ON workspace_qr_records(workspace_id, version, updated_at);
+
+      CREATE INDEX IF NOT EXISTS idx_workspace_qr_active_created
+        ON workspace_qr_records(workspace_id, deleted, created_at DESC);
     `);
 
     this.db.exec(`
