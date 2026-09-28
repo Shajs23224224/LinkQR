@@ -283,3 +283,10 @@ La regla del proyecto permanece: **implementar → compilar → probar → revis
 La Fase 18 convierte el estado actual en una candidate de producción verificable: R8/resource shrinking en release, límites y headers HTTP, readiness del backend, contenedor no-root, claves SaaS con mínimo de 32 caracteres y CI de APK/AAB de release.
 
 See `docs/PHASE-18.md` for the exact scope and exit gate.
+
+
+## Phase 19 — Seguridad avanzada de identidad
+
+La Fase 19 añade verificación de correo, recuperación de contraseña, gestión y revocación de sesiones, protección de rate limiting por IP y un adaptador de entrega de correo por webhook. Android mantiene el funcionamiento offline y ya respeta el nuevo ciclo de verificación antes de iniciar sesión.
+
+See docs/PHASE-19.md for the exact scope and exit gate.
