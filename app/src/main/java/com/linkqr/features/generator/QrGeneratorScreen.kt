@@ -62,7 +62,7 @@ fun QrGeneratorScreen(
             val content = when (type) {
                 QrType.URL -> {
                     val url = UrlValidator.normalize(first)
-                        ?: error("Introduce una URL válida.")
+                        ?: throw IllegalArgumentException("Introduce una URL válida.")
                     QrContent.Url(url)
                 }
                 QrType.WHATSAPP -> QrContent.WhatsApp(first, second.ifBlank { null })
