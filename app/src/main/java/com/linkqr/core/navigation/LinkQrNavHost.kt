@@ -1,10 +1,12 @@
 package com.linkqr.core.navigation
 
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.linkqr.features.generator.UrlQrGeneratorScreen
+import com.linkqr.domain.model.QrType
+import com.linkqr.features.generator.QrGeneratorScreen
 import com.linkqr.features.home.HomeScreen
 import com.linkqr.qr.ZXingQrCodeGenerator
 
@@ -19,41 +21,47 @@ fun LinkQrNavHost(
     ) {
         composable(Routes.HOME) {
             HomeScreen(
-                onGenerateUrl = {
-                    navController.navigate("generator/URL")
+                onGenerate = { type ->
+                    navController.navigate("generator/" + type.name)
                 }
             )
         }
 
         composable(Routes.GENERATOR) { backStackEntry ->
-            when (backStackEntry.arguments?.getString("type")) {
-                "URL" -> {
-                    UrlQrGeneratorScreen(
-                        qrCodeGenerator = qrCodeGenerator,
-                        onBack = { navController.popBackStack() }
-                    )
+            val type = backStackEntry.arguments
+                ?.getString("type")
+                ?.let { value ->
+                    runCatching { QrType.valueOf(value) }.getOrNull()
                 }
-                else -> Unit
+
+            if (type == null) {
+                Text("Tipo de QR no válido")
+            } else {
+                QrGeneratorScreen(
+                    type = type,
+                    qrCodeGenerator = qrCodeGenerator,
+                    onBack = { navController.popBackStack() }
+                )
             }
         }
 
         composable(Routes.PREVIEW) {
-            androidx.compose.material3.Text("Preview")
+            Text("Preview")
         }
         composable(Routes.HISTORY) {
-            androidx.compose.material3.Text("History")
+            Text("History")
         }
         composable(Routes.FAVORITES) {
-            androidx.compose.material3.Text("Favorites")
+            Text("Favorites")
         }
         composable(Routes.SCANNER) {
-            androidx.compose.material3.Text("Scanner")
+            Text("Scanner")
         }
         composable(Routes.PRO) {
-            androidx.compose.material3.Text("Pro")
+            Text("Pro")
         }
         composable(Routes.SETTINGS) {
-            androidx.compose.material3.Text("Settings")
+            Text("Settings")
         }
     }
 }
