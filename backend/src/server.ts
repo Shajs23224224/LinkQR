@@ -10,9 +10,18 @@ const requestSchema = z.object({
   userId: z.string().min(1).max(256).nullable().optional()
 });
 
+export type BillingServerOptions = {
+  packageName: string;
+  proProductId: string;
+};
+
 export function buildServer(
-  verifier: GooglePlayVerifier,
-  store: PurchaseStore
+  verifier: Pick<
+    GooglePlayVerifier,
+    "verifyOneTimeProduct" | "acknowledgeOneTimeProduct"
+  >,
+  store: Pick<PurchaseStore, "hasPurchaseToken" | "save">,
+  options: BillingServerOptions
 ) {
   const app = Fastify({ logger: true });
 
@@ -33,7 +42,7 @@ export function buildServer(
 
     const { purchaseToken, productId, userId = null } = parsed.data;
 
-    if (productId !== config.GOOGLE_PLAY_PRO_PRODUCT_ID) {
+    if (productId !== options.proProductId) {
       return reply.code(400).send({
         verified: false,
         error: "UNKNOWN_PRODUCT"
@@ -44,7 +53,7 @@ export function buildServer(
       const alreadyKnown = store.hasPurchaseToken(purchaseToken);
 
       const purchase = await verifier.verifyOneTimeProduct(
-        config.GOOGLE_PLAY_PACKAGE_NAME,
+        options.packageName,
         productId,
         purchaseToken
       );
@@ -60,7 +69,7 @@ export function buildServer(
 
       if (purchase.acknowledgementState !== 1) {
         await verifier.acknowledgeOneTimeProduct(
-          config.GOOGLE_PLAY_PACKAGE_NAME,
+          options.packageName,
           productId,
           purchaseToken
         );
@@ -96,7 +105,11 @@ async function main() {
     config.GOOGLE_SERVICE_ACCOUNT_JSON_B64
   );
   const store = new PurchaseStore(config.DATABASE_PATH);
-  const app = buildServer(verifier, store);
+
+  const app = buildServer(verifier, store, {
+    packageName: config.GOOGLE_PLAY_PACKAGE_NAME,
+    proProductId: config.GOOGLE_PLAY_PRO_PRODUCT_ID
+  });
 
   const close = async () => {
     await app.close();
