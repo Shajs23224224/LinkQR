@@ -4,14 +4,14 @@ import { loadConfig } from "./config.js";
 import { GooglePlayVerifier } from "./googlePlay.js";
 import { PurchaseStore } from "./store.js";
 import { SaaSStore } from "./saasStore.js";
+import type { AuthRepository, PurchaseRepository, SaaSRepository } from "./repositoryPorts.js";
+import { SqliteBackupManager } from "./sqliteBackup.js";
 import { registerSaaSRoutes } from "./saasRoutes.js";
-import type { SaaSStoreLike } from "./saasRoutes.js";
 import type { SaaSConfig } from "./saas.js";
 import { AuthStore } from "./authStore.js";
 import { registerAuthRoutes } from "./authRoutes.js";
 import type { AuthConfig } from "./auth.js";
 import { getAuthenticatedUser } from "./authRoutes.js";
-import type { AuthStoreLike } from "./authRoutes.js";
 import type { AuthEmailSender } from "./authEmail.js";
 import { WebhookAuthEmailSender } from "./authEmail.js";
 import {
@@ -31,10 +31,10 @@ export type BillingServerOptions = {
     verificationLifetimeMs?: number;
     passwordResetLifetimeMs?: number;
   };
-  authStore?: AuthStoreLike;
+  authStore?: AuthRepository;
   authEmailSender?: AuthEmailSender;
   saas?: SaaSConfig;
-  saasStore?: SaaSStoreLike;
+  saasStore?: SaaSRepository;
   observabilityToken?: string;
   readinessCheck?: () => boolean | Promise<boolean>;
 };
@@ -44,7 +44,7 @@ export function buildServer(
     GooglePlayVerifier,
     "verifyOneTimeProduct" | "acknowledgeOneTimeProduct"
   >,
-  store: Pick<PurchaseStore, "hasPurchaseToken" | "save">,
+  store: PurchaseRepository,
   options: BillingServerOptions
 ) {
   const metrics = new ObservabilityMetrics();
@@ -336,6 +336,12 @@ async function main() {
   );
   const store = new PurchaseStore(config.DATABASE_PATH);
   const saasStore = new SaaSStore(config.DATABASE_PATH);
+  const backupManager = config.DATABASE_BACKUP.enabled && config.DATABASE_BACKUP.directory
+    ? new SqliteBackupManager({
+        sourcePath: config.DATABASE_PATH,
+        backupDirectory: config.DATABASE_BACKUP.directory
+      })
+    : null;
   const authStore = new AuthStore(
     config.DATABASE_PATH,
     config.AUTH.sessionDays * 24 * 60 * 60 * 1000,
@@ -368,6 +374,7 @@ async function main() {
   });
 
   const close = async () => {
+    backupManager?.stop();
     await app.close();
     store.close();
     saasStore.close();
@@ -381,6 +388,24 @@ async function main() {
     host: "0.0.0.0",
     port: config.PORT
   });
+
+  if (backupManager) {
+    try {
+      await backupManager.backupNow();
+    } catch (error) {
+      app.log.error({
+        event: "database_backup_failed",
+        error: error instanceof Error ? error.name : "UNKNOWN_ERROR"
+      });
+    }
+
+    backupManager.start(config.DATABASE_BACKUP.intervalMs, (error) => {
+      app.log.error({
+        event: "database_backup_failed",
+        error: error instanceof Error ? error.name : "UNKNOWN_ERROR"
+      });
+    });
+  }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
