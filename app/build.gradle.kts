@@ -31,6 +31,7 @@ android {
         versionName = "1.0.0"
 
         manifestPlaceholders["ADMOB_APP_ID"] = admobAppId
+
     }
 
     buildTypes {

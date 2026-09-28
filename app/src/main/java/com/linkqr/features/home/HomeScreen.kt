@@ -94,6 +94,7 @@ fun HomeScreen(
             Text("LinkQR PRO")
         }
 
+
         if (showPrivacyOptions) {
             OutlinedButton(
                 onClick = onPrivacyOptions,
@@ -110,7 +111,7 @@ fun HomeScreen(
         }
 
         Text(
-            text = "Phase 14 · Autenticación de usuarios",
+            text = "Phase 15 · Autenticación Android",
             style = MaterialTheme.typography.labelMedium
         )
     }
