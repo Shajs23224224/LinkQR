@@ -13,6 +13,8 @@ sealed interface AuthState {
     data object Loading : AuthState
     data object SignedOut : AuthState
     data class Authenticated(val user: AuthUser) : AuthState
+    data class VerificationRequired(val email: String) : AuthState
+    data class Message(val message: String) : AuthState
     data class Error(val message: String) : AuthState
 }
 
@@ -46,11 +48,13 @@ class AuthManager(
             runCatching {
                 api.me(token)
             }.onSuccess { user ->
-                _state.value = AuthState.Authenticated(user)
+                if (user.emailVerified) {
+                    _state.value = AuthState.Authenticated(user)
+                } else {
+                    tokenStore.clear()
+                    _state.value = AuthState.VerificationRequired(user.email)
+                }
             }.onFailure { error ->
-                // Do not destroy a valid local session just because the device
-                // is temporarily offline. Only an explicit authentication
-                // failure from the backend invalidates the stored token.
                 if (error is AuthApiException && error.statusCode == 401) {
                     tokenStore.clear()
                     _state.value = AuthState.SignedOut
@@ -64,14 +68,54 @@ class AuthManager(
     }
 
     fun login(email: String, password: String) {
-        submit {
+        submitSession {
             api.login(email.trim(), password)
         }
     }
 
     fun register(email: String, password: String, name: String?) {
-        submit {
-            api.register(email.trim(), password, name)
+        _state.value = AuthState.Loading
+
+        scope.launch {
+            runCatching {
+                api.register(email.trim(), password, name)
+            }.onSuccess { user ->
+                _state.value = AuthState.VerificationRequired(user.email)
+            }.onFailure { error ->
+                _state.value = AuthState.Error(
+                    mapError(error)
+                )
+            }
+        }
+    }
+
+    fun resendVerification(email: String) {
+        _state.value = AuthState.Loading
+
+        scope.launch {
+            runCatching {
+                api.resendVerification(email.trim())
+            }.onSuccess {
+                _state.value = AuthState.Message(
+                    "Si la cuenta necesita verificación, se envió un nuevo correo."
+                )
+            }.onFailure { error ->
+                _state.value = AuthState.Error(mapError(error))
+            }
+        }
+    }
+
+    fun requestPasswordReset(email: String) {
+        scope.launch {
+            runCatching {
+                api.requestPasswordReset(email.trim())
+            }.onSuccess {
+                _state.value = AuthState.Message(
+                    "Si existe una cuenta con ese correo, recibirás instrucciones."
+                )
+            }.onFailure { error ->
+                _state.value = AuthState.Error(mapError(error))
+            }
         }
     }
 
@@ -94,7 +138,7 @@ class AuthManager(
         scope.cancel()
     }
 
-    private fun submit(request: suspend () -> AuthSession) {
+    private fun submitSession(request: suspend () -> AuthSession) {
         _state.value = AuthState.Loading
 
         scope.launch {
@@ -104,23 +148,30 @@ class AuthManager(
                 tokenStore.save(session.token)
                 _state.value = AuthState.Authenticated(session.user)
             }.onFailure { error ->
-                _state.value = AuthState.Error(
-                    when (error) {
-                        is AuthApiException -> when (error.errorCode) {
-                            "EMAIL_ALREADY_REGISTERED" ->
-                                "Ese correo ya está registrado."
-                            "INVALID_CREDENTIALS" ->
-                                "Correo o contraseña incorrectos."
-                            "REQUEST_FAILED" ->
-                                "No se pudo completar la solicitud."
-                            else ->
-                                "No se pudo completar la autenticación."
-                        }
-                        else ->
-                            "No se pudo conectar con el servidor."
-                    }
-                )
+                _state.value = AuthState.Error(mapError(error))
             }
         }
     }
+
+    private fun mapError(error: Throwable): String =
+        when (error) {
+            is AuthApiException -> when (error.errorCode) {
+                "EMAIL_ALREADY_REGISTERED" ->
+                    "Ese correo ya está registrado."
+                "INVALID_CREDENTIALS" ->
+                    "Correo o contraseña incorrectos."
+                "EMAIL_NOT_VERIFIED" ->
+                    "Debes verificar tu correo antes de iniciar sesión."
+                "RATE_LIMITED" ->
+                    "Demasiados intentos. Espera unos minutos e inténtalo de nuevo."
+                "EMAIL_DELIVERY_FAILED" ->
+                    "No se pudo enviar el correo de verificación."
+                "INVALID_OR_EXPIRED_TOKEN" ->
+                    "El enlace ya no es válido o expiró."
+                else ->
+                    "No se pudo completar la autenticación."
+            }
+            else ->
+                "No se pudo conectar con el servidor."
+        }
 }
