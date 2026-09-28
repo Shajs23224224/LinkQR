@@ -5,6 +5,7 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.MultiFormatWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
+import com.linkqr.core.performance.PerformancePolicy
 import com.linkqr.domain.design.QrDesignValidator
 import com.linkqr.domain.model.QrDesign
 
@@ -12,7 +13,7 @@ class ZXingQrCodeGenerator {
 
     fun generate(
         content: String,
-        sizePx: Int = 768,
+        sizePx: Int = PerformancePolicy.QR_BITMAP_SIZE_PX,
         design: QrDesign = QrDesign()
     ): Bitmap {
         require(content.isNotBlank()) { "QR content cannot be blank" }
@@ -34,23 +35,10 @@ class ZXingQrCodeGenerator {
             hints
         )
 
-        return Bitmap.createBitmap(
-            sizePx,
-            sizePx,
-            Bitmap.Config.ARGB_8888
-        ).also { bitmap ->
-            val foreground = design.foregroundColor.toInt()
-            val background = design.backgroundColor.toInt()
-
-            for (x in 0 until sizePx) {
-                for (y in 0 until sizePx) {
-                    bitmap.setPixel(
-                        x,
-                        y,
-                        if (matrix[x, y]) foreground else background
-                    )
-                }
-            }
-        }
+        return QrBitmapRenderer.render(
+            matrix = matrix,
+            foreground = design.foregroundColor.toInt(),
+            background = design.backgroundColor.toInt()
+        )
     }
 }
