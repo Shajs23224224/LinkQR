@@ -1,9 +1,10 @@
 package com.linkqr.auth
 
 import android.content.Context
-import android.util.Base64
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import android.util.Base64
+import org.json.JSONObject
 import java.nio.charset.StandardCharsets
 import java.security.KeyStore
 import javax.crypto.Cipher
@@ -24,42 +25,51 @@ class AuthSessionStore(context: Context) {
 
     fun load(): AuthSession? {
         val encoded = preferences.getString(KEY_SESSION, null) ?: return null
-        return runCatching {
+        val session = runCatching {
             val encrypted = Base64.decode(encoded, Base64.NO_WRAP)
             require(encrypted.size > IV_LENGTH)
             val iv = encrypted.copyOfRange(0, IV_LENGTH)
             val ciphertext = encrypted.copyOfRange(IV_LENGTH, encrypted.size)
+
             val cipher = Cipher.getInstance(TRANSFORMATION)
             cipher.init(
                 Cipher.DECRYPT_MODE,
                 getOrCreateKey(),
                 GCMParameterSpec(128, iv)
             )
-            val plain = cipher.doFinal(ciphertext).toString(StandardCharsets.UTF_8)
-            val parts = plain.split("|", limit = 5)
-            require(parts.size == 5)
-            AuthSession(
-                token = parts[0],
-                userId = parts[1],
-                email = parts[2],
-                name = parts[3].takeUnless { it == EMPTY_NAME },
-                expiresAt = parts[4].toLong()
+            val json = JSONObject(
+                cipher.doFinal(ciphertext).toString(StandardCharsets.UTF_8)
             )
-        }.getOrNull()?.takeIf { it.expiresAt > System.currentTimeMillis() }
+            AuthSession(
+                token = json.getString("token"),
+                userId = json.getString("userId"),
+                email = json.getString("email"),
+                name = json.optString("name").takeUnless { it.isBlank() || it == "null" },
+                expiresAt = json.getLong("expiresAt")
+            )
+        }.getOrNull()
+
+        if (session == null || session.expiresAt <= System.currentTimeMillis()) {
+            clear()
+            return null
+        }
+
+        return session
     }
 
     fun save(session: AuthSession) {
-        val plain = listOf(
-            session.token,
-            session.userId,
-            session.email,
-            session.name ?: EMPTY_NAME,
-            session.expiresAt.toString()
-        ).joinToString("|")
+        val json = JSONObject()
+            .put("token", session.token)
+            .put("userId", session.userId)
+            .put("email", session.email)
+            .put("name", session.name)
+            .put("expiresAt", session.expiresAt)
 
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
-        val ciphertext = cipher.doFinal(plain.toByteArray(StandardCharsets.UTF_8))
+        val ciphertext = cipher.doFinal(
+            json.toString().toByteArray(StandardCharsets.UTF_8)
+        )
         val encrypted = cipher.iv + ciphertext
 
         preferences.edit()
@@ -100,6 +110,5 @@ class AuthSessionStore(context: Context) {
         const val ANDROID_KEYSTORE = "AndroidKeyStore"
         const val TRANSFORMATION = "AES/GCM/NoPadding"
         const val IV_LENGTH = 12
-        const val EMPTY_NAME = "-"
     }
 }
