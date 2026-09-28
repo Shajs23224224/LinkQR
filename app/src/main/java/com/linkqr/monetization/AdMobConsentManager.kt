@@ -37,7 +37,6 @@ class AdMobConsentManager {
                     onPrivacyOptionsChanged(isPrivacyOptionsRequired)
                     initializeIfAllowed(activity, onAdsReady)
                 }
-                initializeIfAllowed(activity, onAdsReady)
             },
             {
                 onPrivacyOptionsChanged(isPrivacyOptionsRequired)
