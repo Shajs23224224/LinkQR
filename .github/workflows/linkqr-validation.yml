@@ -18,6 +18,29 @@ jobs:
       - run: npm install
       - run: npm test
       - run: npm run build
+      - name: Build backend container
+        run: docker build -t linkqr-backend:ci .
+      - name: Smoke test backend container
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --name linkqr-backend-ci -p 18080:8080 \
+            -e GOOGLE_PLAY_PACKAGE_NAME=com.linkqr \
+            -e GOOGLE_PLAY_PRO_PRODUCT_ID=linkqr_pro \
+            -e GOOGLE_SERVICE_ACCOUNT_JSON_B64=e30= \
+            -e LINKQR_AUTH_ENABLED=false \
+            -e LINKQR_SAAS_ENABLED=false \
+            -e DATABASE_PATH=/data/linkqr-ci.db \
+            linkqr-backend:ci
+          trap 'docker rm -f linkqr-backend-ci >/dev/null 2>&1 || true' EXIT
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent http://127.0.0.1:18080/ready; then
+              break
+            fi
+            sleep 2
+          done
+          curl --fail --silent http://127.0.0.1:18080/ready
+          test "$(docker exec linkqr-backend-ci id -u)" != "0"
 
   android:
     runs-on: ubuntu-latest
