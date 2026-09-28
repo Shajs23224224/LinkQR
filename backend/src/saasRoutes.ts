@@ -9,7 +9,8 @@ import {
   Workspace,
   WorkspaceQrRecord,
   SyncApplyResult,
-  SaaSSyncPage
+  SaaSSyncPage,
+  compareSyncRecords
 } from "./saas.js";
 
 export type SaaSStoreLike = {
@@ -226,8 +227,19 @@ export function registerSaaSRoutes(
         workspace.plan === "PRO"
           ? config.proQrLimit
           : config.freeQrLimit;
+      const staleOrDuplicate =
+        existing !== null &&
+        compareSyncRecords(parsed.data, existing) <= 0;
 
-      if (!parsed.data.deleted && !activeBefore && store.countQrRecords(workspaceId) >= limit) {
+      // Resolve stale/duplicate revisions before quota checks. A stale client
+      // must receive SYNC_CONFLICT rather than being blocked by the active
+      // record quota, especially when the current winner is a tombstone.
+      if (
+        !staleOrDuplicate &&
+        !parsed.data.deleted &&
+        !activeBefore &&
+        store.countQrRecords(workspaceId) >= limit
+      ) {
         return reply.code(409).send({
           synced: false,
           error: "WORKSPACE_QUOTA_EXCEEDED",
