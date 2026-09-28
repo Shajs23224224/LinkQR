@@ -59,5 +59,6 @@ export function compareSyncRecords(
 ): number {
   if (left.version !== right.version) return left.version > right.version ? 1 : -1;
   if (left.updatedAt !== right.updatedAt) return left.updatedAt > right.updatedAt ? 1 : -1;
-  return left.deviceId.localeCompare(right.deviceId);
+  if (left.deviceId === right.deviceId) return 0;
+  return left.deviceId < right.deviceId ? -1 : 1;
 }
