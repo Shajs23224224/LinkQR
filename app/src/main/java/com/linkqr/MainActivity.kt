@@ -94,6 +94,7 @@ class MainActivity : ComponentActivity() {
                         authState = authState,
                         onLogin = authManager::login,
                         onRegister = authManager::register,
+                        onResendVerification = authManager::resendVerification,
                         onLogout = authManager::logout
                     )
                 }
