@@ -32,6 +32,9 @@ fun LinkQrNavHost(
                 },
                 onFavorites = {
                     navController.navigate(Routes.FAVORITES)
+                },
+                onScanner = {
+                    navController.navigate(Routes.SCANNER)
                 }
             )
         }
@@ -71,11 +74,15 @@ fun LinkQrNavHost(
             )
         }
 
+        composable(Routes.SCANNER) {
+            com.linkqr.features.scanner.ScannerScreen(
+                repository = qrHistoryRepository,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
         composable(Routes.PREVIEW) {
             Text("Preview")
-        }
-        composable(Routes.SCANNER) {
-            Text("Scanner")
         }
         composable(Routes.PRO) {
             Text("Pro")
