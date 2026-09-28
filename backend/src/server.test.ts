@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { buildServer } from "./server.js";
 import type { GooglePlayVerifier } from "./googlePlay.js";
 import type { PurchaseStore } from "./store.js";
+import type { AuthStoreLike } from "./authRoutes.js";
 
 const options = {
   packageName: "com.linkqr",
@@ -68,6 +69,78 @@ describe("Google Play verification API", () => {
     });
     expect(verifier.acknowledgeOneTimeProduct).toHaveBeenCalledOnce();
     expect(store.save).toHaveBeenCalledOnce();
+
+    await app.close();
+  });
+
+  it("requires an authenticated user for purchase attribution when auth is enabled", async () => {
+    const verifier = {
+      verifyOneTimeProduct: vi.fn(),
+      acknowledgeOneTimeProduct: vi.fn()
+    } as unknown as GooglePlayVerifier;
+
+    const store = {
+      hasPurchaseToken: vi.fn(),
+      save: vi.fn()
+    } as unknown as PurchaseStore;
+
+    const authStore: AuthStoreLike = {
+      createUser: vi.fn(),
+      findUserByEmail: vi.fn(),
+      verifyCredentials: vi.fn(),
+      createSession: vi.fn(),
+      getUserBySessionToken: vi.fn((token: string) =>
+        token === "session-1"
+          ? {
+              id: "user-1",
+              email: "user@example.com",
+              name: "User",
+              createdAt: 1
+            }
+          : null
+      ),
+      revokeSession: vi.fn()
+    };
+
+    const app = buildServer(verifier, store, {
+      ...options,
+      auth: {
+        enabled: true,
+        sessionDays: 30
+      },
+      authStore
+    });
+
+    const unauthorized = await app.inject({
+      method: "POST",
+      url: "/v1/google-play/verify",
+      payload: {
+        purchaseToken: "token-123",
+        productId: "linkqr_pro"
+      }
+    });
+
+    expect(unauthorized.statusCode).toBe(401);
+    expect(store.save).not.toHaveBeenCalled();
+
+    const authorized = await app.inject({
+      method: "POST",
+      url: "/v1/google-play/verify",
+      headers: {
+        authorization: "Bearer session-1"
+      },
+      payload: {
+        purchaseToken: "token-123",
+        productId: "linkqr_pro"
+      }
+    });
+
+    expect(authorized.statusCode).toBe(200);
+    expect(store.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-1"
+      })
+    );
 
     await app.close();
   });

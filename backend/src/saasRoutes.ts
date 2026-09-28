@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { AuthUser } from "./auth.js";
+import type { AuthStoreLike } from "./authRoutes.js";
 import {
   SaaSConfig,
   WorkspaceCreateSchema,
@@ -10,6 +12,8 @@ import {
 export type SaaSStoreLike = {
   createWorkspace(workspace: Workspace): void;
   getWorkspace(workspaceId: string): Workspace | null;
+  getWorkspaceForUser(workspaceId: string, userId: string): Workspace | null;
+  listWorkspacesForUser(userId: string): Workspace[];
   countQrRecords(workspaceId: string): number;
   hasQrRecord(workspaceId: string, recordId: string): boolean;
   upsertQrRecord(record: {
@@ -36,16 +40,61 @@ export type SaaSStoreLike = {
   }>;
 };
 
+type Principal =
+  | { kind: "api-key"; user: null }
+  | { kind: "user"; user: AuthUser };
+
 function unauthorized(reply: FastifyReply) {
   return reply.code(401).send({
     error: "UNAUTHORIZED"
   });
 }
 
+function getBearerToken(request: FastifyRequest): string | null {
+  const header = request.headers.authorization;
+  if (!header) return null;
+  const match = /^Bearer\s+([^\s]+)$/i.exec(header);
+  return match?.[1] ?? null;
+}
+
+function resolvePrincipal(
+  request: FastifyRequest,
+  config: SaaSConfig,
+  authStore?: AuthStoreLike
+): Principal | null {
+  const providedKey = request.headers["x-linkqr-api-key"];
+  const apiKey = Array.isArray(providedKey)
+    ? providedKey[0]
+    : providedKey;
+
+  if (apiKey === config.apiKey) {
+    return { kind: "api-key", user: null };
+  }
+
+  const token = getBearerToken(request);
+  if (token && authStore) {
+    const user = authStore.getUserBySessionToken(token);
+    if (user) return { kind: "user", user };
+  }
+
+  return null;
+}
+
+function workspaceForPrincipal(
+  store: SaaSStoreLike,
+  workspaceId: string,
+  principal: Principal
+): Workspace | null {
+  return principal.kind === "user"
+    ? store.getWorkspaceForUser(workspaceId, principal.user.id)
+    : store.getWorkspace(workspaceId);
+}
+
 export function registerSaaSRoutes(
   app: FastifyInstance,
   store: SaaSStoreLike,
-  config: SaaSConfig
+  config: SaaSConfig,
+  authStore?: AuthStoreLike
 ): void {
   if (!config.enabled) return;
 
@@ -53,12 +102,7 @@ export function registerSaaSRoutes(
     request: FastifyRequest,
     reply: FastifyReply
   ) => {
-    const providedKey = request.headers["x-linkqr-api-key"];
-    const apiKey = Array.isArray(providedKey)
-      ? providedKey[0]
-      : providedKey;
-
-    if (apiKey !== config.apiKey) {
+    if (!resolvePrincipal(request, config, authStore)) {
       return unauthorized(reply);
     }
   };
@@ -75,6 +119,25 @@ export function registerSaaSRoutes(
     }
   }));
 
+  app.get(
+    "/v1/saas/workspaces",
+    { preHandler: authorize },
+    async (request, reply) => {
+      const principal = resolvePrincipal(request, config, authStore);
+      if (!principal) return unauthorized(reply);
+
+      if (principal.kind === "user") {
+        return {
+          workspaces: store.listWorkspacesForUser(principal.user.id)
+        };
+      }
+
+      return {
+        workspaces: []
+      };
+    }
+  );
+
   app.post(
     "/v1/saas/workspaces",
     { preHandler: authorize },
@@ -88,11 +151,15 @@ export function registerSaaSRoutes(
         });
       }
 
+      const principal = resolvePrincipal(request, config, authStore);
+      if (!principal) return unauthorized(reply);
+
       const workspace: Workspace = {
         id: randomUUID(),
         name: parsed.data.name,
-        plan: parsed.data.plan,
-        createdAt: Date.now()
+        plan: principal.kind === "user" ? "FREE" : parsed.data.plan,
+        createdAt: Date.now(),
+        ownerUserId: principal.kind === "user" ? principal.user.id : null
       };
 
       store.createWorkspace(workspace);
@@ -116,7 +183,10 @@ export function registerSaaSRoutes(
         });
       }
 
-      const workspace = store.getWorkspace(workspaceId);
+      const principal = resolvePrincipal(request, config, authStore);
+      if (!principal) return unauthorized(reply);
+
+      const workspace = workspaceForPrincipal(store, workspaceId, principal);
 
       if (!workspace) {
         return reply.code(404).send({
@@ -124,9 +194,7 @@ export function registerSaaSRoutes(
         });
       }
 
-      return {
-        workspace
-      };
+      return { workspace };
     }
   );
 
@@ -143,7 +211,10 @@ export function registerSaaSRoutes(
         });
       }
 
-      const workspace = store.getWorkspace(workspaceId);
+      const principal = resolvePrincipal(request, config, authStore);
+      if (!principal) return unauthorized(reply);
+
+      const workspace = workspaceForPrincipal(store, workspaceId, principal);
 
       if (!workspace) {
         return reply.code(404).send({
@@ -202,7 +273,10 @@ export function registerSaaSRoutes(
         });
       }
 
-      if (!store.getWorkspace(workspaceId)) {
+      const principal = resolvePrincipal(request, config, authStore);
+      if (!principal) return unauthorized(reply);
+
+      if (!workspaceForPrincipal(store, workspaceId, principal)) {
         return reply.code(404).send({
           error: "WORKSPACE_NOT_FOUND"
         });

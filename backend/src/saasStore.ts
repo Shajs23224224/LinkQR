@@ -12,7 +12,8 @@ export class SaaSStore {
         workspace_id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         plan TEXT NOT NULL,
-        created_at INTEGER NOT NULL
+        created_at INTEGER NOT NULL,
+        owner_user_id TEXT
       );
 
       CREATE TABLE IF NOT EXISTS workspace_qr_records (
@@ -32,27 +33,41 @@ export class SaaSStore {
       CREATE INDEX IF NOT EXISTS idx_workspace_qr_created_at
         ON workspace_qr_records(workspace_id, created_at DESC);
     `);
+
+    const columns = this.db
+      .prepare("PRAGMA table_info(workspaces)")
+      .all() as Array<{ name: string }>;
+
+    if (!columns.some((column) => column.name === "owner_user_id")) {
+      this.db.exec("ALTER TABLE workspaces ADD COLUMN owner_user_id TEXT");
+    }
+
+    this.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_workspace_owner
+        ON workspaces(owner_user_id);
+    `);
   }
 
   createWorkspace(workspace: Workspace): void {
     this.db
       .prepare(`
         INSERT INTO workspaces
-          (workspace_id, name, plan, created_at)
-        VALUES (?, ?, ?, ?)
+          (workspace_id, name, plan, created_at, owner_user_id)
+        VALUES (?, ?, ?, ?, ?)
       `)
       .run(
         workspace.id,
         workspace.name,
         workspace.plan,
-        workspace.createdAt
+        workspace.createdAt,
+        workspace.ownerUserId ?? null
       );
   }
 
   getWorkspace(workspaceId: string): Workspace | null {
     const row = this.db
       .prepare(`
-        SELECT workspace_id, name, plan, created_at
+        SELECT workspace_id, name, plan, created_at, owner_user_id
         FROM workspaces
         WHERE workspace_id = ?
       `)
@@ -62,17 +77,50 @@ export class SaaSStore {
           name: string;
           plan: SaaSPlan;
           created_at: number;
+          owner_user_id: string | null;
         }
       | undefined;
 
-    if (!row) return null;
+    return row ? this.toWorkspace(row) : null;
+  }
 
-    return {
-      id: row.workspace_id,
-      name: row.name,
-      plan: row.plan,
-      createdAt: row.created_at
-    };
+  getWorkspaceForUser(workspaceId: string, userId: string): Workspace | null {
+    const row = this.db
+      .prepare(`
+        SELECT workspace_id, name, plan, created_at, owner_user_id
+        FROM workspaces
+        WHERE workspace_id = ? AND owner_user_id = ?
+      `)
+      .get(workspaceId, userId) as
+      | {
+          workspace_id: string;
+          name: string;
+          plan: SaaSPlan;
+          created_at: number;
+          owner_user_id: string | null;
+        }
+      | undefined;
+
+    return row ? this.toWorkspace(row) : null;
+  }
+
+  listWorkspacesForUser(userId: string): Workspace[] {
+    const rows = this.db
+      .prepare(`
+        SELECT workspace_id, name, plan, created_at, owner_user_id
+        FROM workspaces
+        WHERE owner_user_id = ?
+        ORDER BY created_at DESC
+      `)
+      .all(userId) as Array<{
+        workspace_id: string;
+        name: string;
+        plan: SaaSPlan;
+        created_at: number;
+        owner_user_id: string | null;
+      }>;
+
+    return rows.map((row) => this.toWorkspace(row));
   }
 
   countQrRecords(workspaceId: string): number {
@@ -181,5 +229,21 @@ export class SaaSStore {
 
   close(): void {
     this.db.close();
+  }
+
+  private toWorkspace(row: {
+    workspace_id: string;
+    name: string;
+    plan: SaaSPlan;
+    created_at: number;
+    owner_user_id: string | null;
+  }): Workspace {
+    return {
+      id: row.workspace_id,
+      name: row.name,
+      plan: row.plan,
+      createdAt: row.created_at,
+      ownerUserId: row.owner_user_id
+    };
   }
 }

@@ -33,6 +33,7 @@ export type Workspace = {
   name: string;
   plan: SaaSPlan;
   createdAt: number;
+  ownerUserId?: string | null;
 };
 
 export type WorkspaceQrRecord = z.infer<typeof WorkspaceQrRecordSchema> & {

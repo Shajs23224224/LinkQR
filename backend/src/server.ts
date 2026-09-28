@@ -7,16 +7,22 @@ import { SaaSStore } from "./saasStore.js";
 import { registerSaaSRoutes } from "./saasRoutes.js";
 import type { SaaSStoreLike } from "./saasRoutes.js";
 import type { SaaSConfig } from "./saas.js";
+import { AuthStore } from "./authStore.js";
+import { registerAuthRoutes } from "./authRoutes.js";
+import type { AuthConfig } from "./auth.js";
+import { getAuthenticatedUser } from "./authRoutes.js";
+import type { AuthStoreLike } from "./authRoutes.js";
 
 const requestSchema = z.object({
   purchaseToken: z.string().min(1).max(4096),
-  productId: z.string().min(1),
-  userId: z.string().min(1).max(256).nullable().optional()
+  productId: z.string().min(1)
 });
 
 export type BillingServerOptions = {
   packageName: string;
   proProductId: string;
+  auth?: AuthConfig;
+  authStore?: AuthStoreLike;
   saas?: SaaSConfig;
   saasStore?: SaaSStoreLike;
 };
@@ -31,8 +37,17 @@ export function buildServer(
 ) {
   const app = Fastify({ logger: true });
 
+  if (options.auth?.enabled && options.authStore) {
+    registerAuthRoutes(app, options.authStore, options.auth);
+  }
+
   if (options.saas?.enabled && options.saasStore) {
-    registerSaaSRoutes(app, options.saasStore, options.saas);
+    registerSaaSRoutes(
+      app,
+      options.saasStore,
+      options.saas,
+      options.auth?.enabled ? options.authStore : undefined
+    );
   }
 
   app.get("/health", async () => ({
@@ -50,13 +65,25 @@ export function buildServer(
       });
     }
 
-    const { purchaseToken, productId, userId = null } = parsed.data;
+    const { purchaseToken, productId } = parsed.data;
 
     if (productId !== options.proProductId) {
       return reply.code(400).send({
         verified: false,
         error: "UNKNOWN_PRODUCT"
       });
+    }
+
+    let authenticatedUserId: string | null = null;
+    if (options.auth?.enabled && options.authStore) {
+      const user = getAuthenticatedUser(request, options.authStore);
+      if (!user) {
+        return reply.code(401).send({
+          verified: false,
+          error: "UNAUTHORIZED"
+        });
+      }
+      authenticatedUserId = user.id;
     }
 
     try {
@@ -88,7 +115,7 @@ export function buildServer(
       store.save({
         purchaseToken,
         productId,
-        userId,
+        userId: authenticatedUserId,
         verifiedAt: Date.now()
       });
 
@@ -118,10 +145,16 @@ async function main() {
   );
   const store = new PurchaseStore(config.DATABASE_PATH);
   const saasStore = new SaaSStore(config.DATABASE_PATH);
+  const authStore = new AuthStore(
+    config.DATABASE_PATH,
+    config.AUTH.sessionDays * 24 * 60 * 60 * 1000
+  );
 
   const app = buildServer(verifier, store, {
     packageName: config.GOOGLE_PLAY_PACKAGE_NAME,
     proProductId: config.GOOGLE_PLAY_PRO_PRODUCT_ID,
+    auth: config.AUTH,
+    authStore,
     saas: config.SAAS,
     saasStore
   });
@@ -130,6 +163,7 @@ async function main() {
     await app.close();
     store.close();
     saasStore.close();
+    authStore.close();
   };
 
   process.on("SIGINT", close);
