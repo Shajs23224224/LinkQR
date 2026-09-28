@@ -98,7 +98,7 @@ fun HomeScreen(
         }
 
         Text(
-            text = "Phase 9 · PRO Billing",
+            text = "Phase 10 · Optimización",
             style = MaterialTheme.typography.labelMedium
         )
     }
