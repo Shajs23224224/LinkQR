@@ -54,6 +54,7 @@ Implement → compile → test → fix → freeze → next phase.
 11. Testing
 12. Publication
 13. SaaS preparation
+14. Functional user authentication
 
 
 ## Phase 8 — FREE monetization
@@ -185,3 +186,33 @@ Phase 13 adds a backend foundation for a future cloud version of LinkQR without 
 - Architecture and security notes in docs/SAAS.md.
 
 The Android application remains offline-first. The SaaS API is preparation for a future authenticated cloud product and is not yet exposed as an end-user account system.
+
+
+## Phase 14 — Autenticación de usuarios funcional
+
+Phase 14 adds the backend identity layer required for the SaaS product.
+
+### Included
+
+- User registration with normalized email.
+- Secure password hashing with Node.js scrypt and per-password salt.
+- Login with server-side opaque sessions.
+- 30-day configurable session lifetime.
+- Current-user endpoint and logout/revocation.
+- SQLite persistence for users and sessions.
+- Workspace ownership tied to the authenticated user.
+- Cross-user workspace isolation.
+- Authenticated Google Play purchase attribution.
+- Client users cannot self-assign the PRO plan.
+- Legacy server-to-server API-key access remains available for controlled administration.
+
+### Authentication endpoints
+
+When LINKQR_AUTH_ENABLED=true:
+
+- POST /v1/auth/register
+- POST /v1/auth/login
+- GET /v1/auth/me
+- POST /v1/auth/logout
+
+The Android application remains offline-first; this phase establishes the cloud identity API that a future Android/web account UI can consume.
