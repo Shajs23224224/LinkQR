@@ -22,11 +22,15 @@ export const WorkspaceQrRecordSchema = z.object({
   type: z.string().trim().min(1).max(32),
   payload: z.string().min(1).max(2048),
   createdAt: z.number().int().nonnegative(),
-  updatedAt: z.number().int().nonnegative().default(0),
+  updatedAt: z.number().int().nonnegative(),
   isFavorite: z.boolean(),
   foregroundColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
   backgroundColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
-  marginModules: z.number().int().min(1).max(8)
+  marginModules: z.number().int().min(1).max(8),
+  version: z.number().int().positive(),
+  deviceId: z.string().trim().min(1).max(128),
+  deleted: z.boolean().default(false),
+  deletedAt: z.number().int().nonnegative().nullable().default(null)
 });
 
 export type Workspace = {
@@ -40,3 +44,20 @@ export type Workspace = {
 export type WorkspaceQrRecord = z.infer<typeof WorkspaceQrRecordSchema> & {
   workspaceId: string;
 };
+
+
+export type SyncApplyResult = {
+  accepted: boolean;
+  created: boolean;
+  updated: boolean;
+  record: WorkspaceQrRecord;
+};
+
+export function compareSyncRecords(
+  left: Pick<WorkspaceQrRecord, "version" | "updatedAt" | "deviceId">,
+  right: Pick<WorkspaceQrRecord, "version" | "updatedAt" | "deviceId">
+): number {
+  if (left.version !== right.version) return left.version > right.version ? 1 : -1;
+  if (left.updatedAt !== right.updatedAt) return left.updatedAt > right.updatedAt ? 1 : -1;
+  return left.deviceId.localeCompare(right.deviceId);
+}
