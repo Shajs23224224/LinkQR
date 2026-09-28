@@ -26,6 +26,7 @@ fun LinkQrNavHost(
     qrCodeGenerator: ZXingQrCodeGenerator = ZXingQrCodeGenerator(),
     qrHistoryRepository: QrHistoryRepository,
     showAds: Boolean = false,
+    isPro: Boolean = false,
     adMobFullScreenManager: AdMobFullScreenManager? = null,
     showRewardedAdOption: Boolean = false,
     onWatchRewardedAd: () -> Unit = {},
@@ -77,7 +78,7 @@ fun LinkQrNavHost(
                     navController.navigate(Routes.ACCOUNT)
                 },
                 accountEmail = authenticatedUser?.email,
-                isPro = !showAds && !showRewardedAdOption,
+                isPro = isPro,
                 showAds = showAds,
                 showRewardedAdOption = showRewardedAdOption,
                 onWatchRewardedAd = onWatchRewardedAd,
