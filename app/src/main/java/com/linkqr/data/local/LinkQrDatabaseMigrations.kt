@@ -18,4 +18,24 @@ object LinkQrDatabaseMigrations {
             )
         }
     }
+
+    val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "ALTER TABLE qr_records ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0"
+            )
+            db.execSQL(
+                "ALTER TABLE qr_records ADD COLUMN syncId TEXT"
+            )
+            db.execSQL(
+                "ALTER TABLE qr_records ADD COLUMN syncStatus TEXT NOT NULL DEFAULT 'PENDING'"
+            )
+            db.execSQL(
+                "CREATE INDEX IF NOT EXISTS index_qr_records_syncStatus ON qr_records(syncStatus)"
+            )
+            db.execSQL(
+                "UPDATE qr_records SET updatedAt = createdAt WHERE updatedAt = 0"
+            )
+        }
+    }
 }
