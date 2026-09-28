@@ -79,7 +79,7 @@ object QrPayloadBuilder {
                 require(address.length <= 254) {
                     "El correo electrónico es demasiado largo."
                 }
-                require(address.matches(Regex("""^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"""))) {
+                require(address.matches(Regex("""^[^\s@]+@[^\s@]+\.[^\s@]+$"""))) {
                     "Email address is invalid"
                 }
 
