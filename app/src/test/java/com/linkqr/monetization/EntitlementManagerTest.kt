@@ -1,5 +1,6 @@
 package com.linkqr.monetization
 
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -11,7 +12,7 @@ class EntitlementManagerTest {
 
     @Test
     fun freePlanIsSelected() {
-        assertEquals(Plan.FREE, entitlementManager.plan)
+        assertEquals(Plan.FREE, entitlementManager.plan.value)
     }
 
     @Test
@@ -22,7 +23,7 @@ class EntitlementManagerTest {
     @Test
     fun proPlanWouldHideAds() {
         val proManager = object : EntitlementManager {
-            override val plan: Plan = Plan.PRO
+            override val plan = MutableStateFlow(Plan.PRO)
         }
 
         assertFalse(proManager.shouldShowAds())
