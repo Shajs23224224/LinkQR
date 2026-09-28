@@ -23,6 +23,7 @@ export type AuthUser = {
   email: string;
   name: string | null;
   createdAt: number;
+  emailVerified: boolean;
 };
 
 const SCRYPT_N = 32_768;
