@@ -10,6 +10,8 @@ import com.linkqr.domain.model.QrType
 import com.linkqr.features.generator.QrGeneratorScreen
 import com.linkqr.features.history.QrHistoryScreen
 import com.linkqr.features.home.HomeScreen
+import com.linkqr.features.pro.ProScreen
+import com.linkqr.monetization.BillingUiState
 import com.linkqr.qr.ZXingQrCodeGenerator
 
 @Composable
@@ -19,7 +21,10 @@ fun LinkQrNavHost(
     qrHistoryRepository: QrHistoryRepository,
     showAds: Boolean = false,
     showPrivacyOptions: Boolean = false,
-    onPrivacyOptions: () -> Unit = {}
+    onPrivacyOptions: () -> Unit = {},
+    proState: BillingUiState = BillingUiState(),
+    onPro: () -> Unit = {},
+    onRestorePro: () -> Unit = {}
 ) {
     NavHost(
         navController = navController,
@@ -38,6 +43,9 @@ fun LinkQrNavHost(
                 },
                 onScanner = {
                     navController.navigate(Routes.SCANNER)
+                },
+                onPro = {
+                    navController.navigate(Routes.PRO)
                 },
                 showAds = showAds,
                 showPrivacyOptions = showPrivacyOptions,
@@ -87,12 +95,19 @@ fun LinkQrNavHost(
             )
         }
 
+        composable(Routes.PRO) {
+            ProScreen(
+                state = proState,
+                onBuy = onPro,
+                onRestore = onRestorePro,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
         composable(Routes.PREVIEW) {
             Text("Preview")
         }
-        composable(Routes.PRO) {
-            Text("Pro")
-        }
+
         composable(Routes.SETTINGS) {
             Text("Settings")
         }
