@@ -5,6 +5,7 @@ import {
   RegisterSchema,
   type AuthConfig
 } from "./auth.js";
+import type { AuthUser } from "./auth.js";
 import type { AuthRepository } from "./repositoryPorts.js";
 import type { AuthEmailSender } from "./authEmail.js";
 import { AuthRateLimiter } from "./authRateLimiter.js";
@@ -32,9 +33,7 @@ const ChangePasswordSchema = z.object({
 export type AuthStoreLike = AuthRepository;
 
 export type AuthPrincipal = {
-  user: ReturnType<AuthStore["findUserByEmail"]> extends infer T
-    ? Exclude<T, null>
-    : never;
+  user: AuthUser;
   sessionId: string;
 };
 
