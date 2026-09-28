@@ -6,7 +6,9 @@ import {
   SaaSConfig,
   WorkspaceCreateSchema,
   WorkspaceQrRecordSchema,
-  Workspace
+  Workspace,
+  WorkspaceQrRecord,
+  SyncApplyResult
 } from "./saas.js";
 
 export type SaaSStoreLike = {
@@ -16,31 +18,10 @@ export type SaaSStoreLike = {
   listWorkspacesForUser(userId: string): Workspace[];
   countQrRecords(workspaceId: string): number;
   hasQrRecord(workspaceId: string, recordId: string): boolean;
-  upsertQrRecord(record: {
-    workspaceId: string;
-    recordId: string;
-    type: string;
-    payload: string;
-    createdAt: number;
-    updatedAt: number;
-    isFavorite: boolean;
-    foregroundColor: string;
-    backgroundColor: string;
-    marginModules: number;
-  }): void;
-  listQrRecords(workspaceId: string): Array<{
-    workspaceId: string;
-    recordId: string;
-    type: string;
-    payload: string;
-    createdAt: number;
-    updatedAt: number;
-    isFavorite: boolean;
-    foregroundColor: string;
-    backgroundColor: string;
-    marginModules: number;
-  }>;
-};
+  getQrRecord(workspaceId: string, recordId: string): WorkspaceQrRecord | null;
+  upsertQrRecord(record: WorkspaceQrRecord): SyncApplyResult;
+  listQrRecords(workspaceId: string, includeDeleted?: boolean): WorkspaceQrRecord[];
+}
 
 type Principal =
   | { kind: "api-key"; user: null }
@@ -235,12 +216,16 @@ export function registerSaaSRoutes(
       }
 
       const exists = store.hasQrRecord(workspaceId, parsed.data.recordId);
+      const existing = exists
+        ? store.getQrRecord(workspaceId, parsed.data.recordId)
+        : null;
+      const activeBefore = existing ? !existing.deleted : false;
       const limit =
         workspace.plan === "PRO"
           ? config.proQrLimit
           : config.freeQrLimit;
 
-      if (!exists && store.countQrRecords(workspaceId) >= limit) {
+      if (!parsed.data.deleted && !activeBefore && store.countQrRecords(workspaceId) >= limit) {
         return reply.code(409).send({
           synced: false,
           error: "WORKSPACE_QUOTA_EXCEEDED",
@@ -248,17 +233,26 @@ export function registerSaaSRoutes(
         });
       }
 
-      store.upsertQrRecord({
+      const result = store.upsertQrRecord({
         workspaceId,
         ...parsed.data
       });
+
+      if (!result.accepted) {
+        return reply.code(409).send({
+          synced: false,
+          error: "SYNC_CONFLICT",
+          winner: result.record
+        });
+      }
 
       return {
         synced: true,
         workspaceId,
         recordId: parsed.data.recordId,
-        created: !exists,
-        updated: exists
+        created: result.created,
+        updated: result.updated,
+        record: result.record
       };
     }
   );
@@ -284,10 +278,13 @@ export function registerSaaSRoutes(
         });
       }
 
+      const query = request.query as { includeDeleted?: string };
+      const includeDeleted = query.includeDeleted === "true";
+
       return {
         workspaceId,
-        records: store.listQrRecords(workspaceId)
+        records: store.listQrRecords(workspaceId, includeDeleted)
       };
     }
   );
-}
+}}
