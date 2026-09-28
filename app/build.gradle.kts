@@ -4,20 +4,38 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
-val admobAppId = providers.gradleProperty("LINKQR_ADMOB_APP_ID")
-    .orElse("ca-app-pub-3940256099942544~3347511713")
-    .get()
+fun configValue(name: String, fallback: String): String =
+    providers.gradleProperty(name)
+        .orElse(providers.environmentVariable(name))
+        .orElse(fallback)
+        .get()
 
-val admobBannerAdUnitId = providers.gradleProperty("LINKQR_ADMOB_BANNER_AD_UNIT_ID")
-    .orElse("ca-app-pub-3940256099942544/9214589741")
-    .get()
+val admobAppId = configValue(
+    "LINKQR_ADMOB_APP_ID",
+    "ca-app-pub-3940256099942544~3347511713"
+)
+
+val admobBannerAdUnitId = configValue(
+    "LINKQR_ADMOB_BANNER_AD_UNIT_ID",
+    "ca-app-pub-3940256099942544/9214589741"
+)
+
+val admobInterstitialAdUnitId = configValue(
+    "LINKQR_ADMOB_INTERSTITIAL_AD_UNIT_ID",
+    "ca-app-pub-3940256099942544/1033173712"
+)
+
+val admobRewardedAdUnitId = configValue(
+    "LINKQR_ADMOB_REWARDED_AD_UNIT_ID",
+    "ca-app-pub-3940256099942544/5224354917"
+)
 
 val releaseSaasBaseUrl = providers.gradleProperty("LINKQR_SAAS_BASE_URL")
     .orElse("https://api.example.invalid")
     .get()
 
 fun quoteBuildConfigString(value: String): String =
-    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+    "\" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
 android {
     namespace = "com.linkqr"
@@ -42,6 +60,16 @@ android {
             )
             buildConfigField(
                 "String",
+                "ADMOB_INTERSTITIAL_AD_UNIT_ID",
+                "\"ca-app-pub-3940256099942544/1033173712\""
+            )
+            buildConfigField(
+                "String",
+                "ADMOB_REWARDED_AD_UNIT_ID",
+                "\"ca-app-pub-3940256099942544/5224354917\""
+            )
+            buildConfigField(
+                "String",
                 "SAAS_BASE_URL",
                 quoteBuildConfigString(
                     providers.gradleProperty("LINKQR_SAAS_BASE_URL")
@@ -49,6 +77,8 @@ android {
                         .get()
                 )
             )
+            manifestPlaceholders["ADMOB_APP_ID"] =
+                "ca-app-pub-3940256099942544~3347511713"
             manifestPlaceholders["ALLOW_CLEARTEXT_TRAFFIC"] = "true"
         }
 
@@ -63,7 +93,17 @@ android {
             buildConfigField(
                 "String",
                 "ADMOB_BANNER_AD_UNIT_ID",
-                "\"$admobBannerAdUnitId\""
+                quoteBuildConfigString(admobBannerAdUnitId)
+            )
+            buildConfigField(
+                "String",
+                "ADMOB_INTERSTITIAL_AD_UNIT_ID",
+                quoteBuildConfigString(admobInterstitialAdUnitId)
+            )
+            buildConfigField(
+                "String",
+                "ADMOB_REWARDED_AD_UNIT_ID",
+                quoteBuildConfigString(admobRewardedAdUnitId)
             )
             buildConfigField(
                 "String",
