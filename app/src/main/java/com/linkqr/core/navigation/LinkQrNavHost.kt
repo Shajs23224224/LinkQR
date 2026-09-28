@@ -31,6 +31,7 @@ fun LinkQrNavHost(
     authState: AuthState = AuthState.SignedOut,
     onLogin: (String, String) -> Unit = { _, _ -> },
     onRegister: (String, String, String?) -> Unit = { _, _, _ -> },
+    onResendVerification: (String) -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
     NavHost(
@@ -80,6 +81,7 @@ fun LinkQrNavHost(
                         state = state,
                         onLogin = onLogin,
                         onRegister = onRegister,
+                        onResendVerification = onResendVerification,
                         onBack = { navController.popBackStack() }
                     )
                 }
