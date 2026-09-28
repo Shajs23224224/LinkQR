@@ -57,6 +57,7 @@ export function loadConfig() {
       apiKey: parsed.LINKQR_SAAS_API_KEY ?? "disabled",
       freeQrLimit: parsed.LINKQR_SAAS_FREE_QR_LIMIT,
       proQrLimit: parsed.LINKQR_SAAS_PRO_QR_LIMIT
-    }
+    },
+    OBSERVABILITY_TOKEN: parsed.LINKQR_OBSERVABILITY_TOKEN
   };
 }
