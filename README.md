@@ -198,7 +198,7 @@ Phase 16 connects the authenticated Android account with the existing SaaS works
 
 - Authenticated Android SaaS client using the bearer session token from Phase 15.
 - Automatic creation of the user's first FREE workspace as **Mi LinkQR**.
-- Stable `remoteRecordId`, `remoteVersion`, `updatedAt) and `syncDirty` state in Room.
+- Stable `remoteRecordId`, `remoteVersion`, `updatedAt` and `syncDirty` state in Room.
 - Push of local changes only when dirty.
 - Pull of active cloud records and tombstones.
 - Remote deletion propagation using tombstones.
