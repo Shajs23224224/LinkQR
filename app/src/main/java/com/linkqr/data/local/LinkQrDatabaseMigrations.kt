@@ -38,8 +38,6 @@ object LinkQrDatabaseMigrations {
             )
         }
     }
-}
-
  
     val MIGRATION_3_4 = object : Migration(3, 4) {
         override fun migrate(db: SupportSQLiteDatabase) {
@@ -57,4 +55,5 @@ object LinkQrDatabaseMigrations {
             )
         }
     }
+
 }
