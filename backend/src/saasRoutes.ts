@@ -52,6 +52,12 @@ function bearerToken(request: FastifyRequest): string | null {
 export function registerSaaSRoutes(app: FastifyInstance, store: SaaSStoreLike, config: SaaSConfig): void {
   if (!config.enabled) return;
 
+  const isLegacyApiKey = (request: FastifyRequest): boolean => {
+    const providedKey = request.headers["x-linkqr-api-key"];
+    const apiKey = Array.isArray(providedKey) ? providedKey[0] : providedKey;
+    return apiKey === config.apiKey;
+  };
+
   const requireUser = async (request: FastifyRequest, reply: FastifyReply): Promise<User | null> => {
     const token = bearerToken(request);
     if (!token) {
@@ -78,6 +84,11 @@ export function registerSaaSRoutes(app: FastifyInstance, store: SaaSStoreLike, c
 
   const getWorkspace = (request: FastifyRequest) =>
     (request.params as { workspaceId?: string }).workspaceId ?? null;
+
+  const authenticateUserOrApiKey = async (request: FastifyRequest, reply: FastifyReply): Promise<User | null | "api-key"> => {
+    if (isLegacyApiKey(request)) return "api-key";
+    return requireUser(request, reply);
+  };
 
   const canAccessWorkspace = (
     workspaceId: string,
@@ -158,11 +169,7 @@ export function registerSaaSRoutes(app: FastifyInstance, store: SaaSStoreLike, c
   });
 
   app.post("/v1/saas/workspaces", async (request, reply) => {
-    const legacy = await (async () => {
-      const providedKey = request.headers["x-linkqr-api-key"];
-      const key = Array.isArray(providedKey) ? providedKey[0] : providedKey;
-      return key === config.apiKey;
-    })();
+    const legacy = isLegacyApiKey(request);
     const user = legacy ? null : await requireUser(request, reply);
     if (!legacy && !user) return;
 
@@ -183,8 +190,9 @@ export function registerSaaSRoutes(app: FastifyInstance, store: SaaSStoreLike, c
   app.get("/v1/saas/workspaces/:workspaceId", async (request, reply) => {
     const workspaceId = getWorkspace(request);
     if (!workspaceId) return reply.code(400).send({ error: "INVALID_WORKSPACE" });
-    const user = await requireUser(request, reply);
-    if (!user) return;
+    const auth = await authenticateUserOrApiKey(request, reply);
+    if (!auth) return;
+    const user = auth === "api-key" ? null : auth;
     if (!canAccessWorkspace(workspaceId, user, true, request)) return unauthorized(reply);
     const workspace = store.getWorkspace(workspaceId);
     if (!workspace) return reply.code(404).send({ error: "WORKSPACE_NOT_FOUND" });
