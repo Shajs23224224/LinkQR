@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,20 +36,24 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.linkqr.domain.model.QrContent
+import com.linkqr.data.repository.QrHistoryRepository
 import com.linkqr.domain.model.QrType
 import com.linkqr.domain.qr.QrPayloadBuilder
 import com.linkqr.domain.validation.UrlValidator
 import com.linkqr.qr.ZXingQrCodeGenerator
 import com.linkqr.storage.QrImageExporter
+import kotlinx.coroutines.launch
 
 @Composable
 fun QrGeneratorScreen(
     type: QrType,
     qrCodeGenerator: ZXingQrCodeGenerator,
+    qrHistoryRepository: QrHistoryRepository,
     onBack: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val exporter = remember(context) { QrImageExporter(context) }
+    val scope = rememberCoroutineScope()
 
     var first by remember(type) { mutableStateOf("") }
     var second by remember(type) { mutableStateOf("") }
@@ -56,6 +61,8 @@ fun QrGeneratorScreen(
     var error by remember(type) { mutableStateOf<String?>(null) }
     var payload by remember(type) { mutableStateOf<String?>(null) }
     var qrBitmap by remember(type) { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var currentRecordId by remember(type) { mutableStateOf<Long?>(null) }
+    var isFavorite by remember(type) { mutableStateOf(false) }
 
     fun generate() {
         try {
@@ -88,6 +95,14 @@ fun QrGeneratorScreen(
             payload = result
             qrBitmap = qrCodeGenerator.generate(result)
             error = null
+            isFavorite = false
+
+            scope.launch {
+                currentRecordId = qrHistoryRepository.save(
+                    type = type,
+                    payload = result
+                )
+            }
         } catch (_: NumberFormatException) {
             payload = null
             qrBitmap = null
@@ -238,6 +253,20 @@ fun QrGeneratorScreen(
                 OutlinedButton(onClick = ::shareQr, modifier = Modifier.weight(1f)) {
                     Text("Compartir")
                 }
+            }
+
+            OutlinedButton(
+                onClick = {
+                    val id = currentRecordId ?: return@OutlinedButton
+                    val nextFavorite = !isFavorite
+                    isFavorite = nextFavorite
+                    scope.launch {
+                        qrHistoryRepository.setFavorite(id, nextFavorite)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(if (isFavorite) "★ Favorito" else "☆ Añadir a favoritos")
             }
 
             payload?.let {
