@@ -212,13 +212,15 @@ describe("SaaS workspace API", () => {
       id: "user-1",
       email: "user@example.com",
       name: "User",
-      createdAt: 1
+      createdAt: 1,
+      emailVerified: true
     };
     const otherUser = {
       id: "user-2",
       email: "other@example.com",
       name: "Other",
-      createdAt: 2
+      createdAt: 2,
+      emailVerified: true
     };
     const authStore: AuthStoreLike = {
       createUser: vi.fn(),
@@ -228,7 +230,26 @@ describe("SaaS workspace API", () => {
       getUserBySessionToken: vi.fn((token: string) =>
         token === "session-1" ? user : token === "session-2" ? otherUser : null
       ),
-      revokeSession: vi.fn()
+      getSessionByToken: vi.fn((token: string) => {
+        const current = token === "session-1" ? user : token === "session-2" ? otherUser : null;
+        return current
+          ? {
+              sessionId: token,
+              user: current,
+              createdAt: current.createdAt,
+              expiresAt: 9999999999999
+            }
+          : null;
+      }),
+      listSessions: vi.fn().mockReturnValue([]),
+      revokeSession: vi.fn(),
+      revokeSessionById: vi.fn(),
+      revokeOtherSessions: vi.fn(),
+      createEmailVerificationToken: vi.fn(),
+      consumeEmailVerificationToken: vi.fn(),
+      createPasswordResetToken: vi.fn(),
+      resetPassword: vi.fn(),
+      changePassword: vi.fn()
     };
 
     const app = createApp(saasStore, authStore);
