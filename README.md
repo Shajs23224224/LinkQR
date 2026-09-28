@@ -232,11 +232,11 @@ La aplicación Android ya consume la identidad del backend sin convertir la gene
 - Cliente HTTP ligero basado en HttpURLConnection.
 - Logout y detección de sesiones inválidas.
 - Una sesión local no bloquea la generación de QR, historial ni escáner offline.
-- URL del backend configurable mediante la propiedad de Gradle LINKQR_API_BASE_URL.
+- URL del backend SaaS configurable mediante la propiedad de Gradle LINKQR_SAAS_BASE_URL.
 - No se embeben credenciales administrativas del SaaS en el APK.
 
 Ejemplo de build contra un backend HTTPS:
 
 ```bash
-./gradlew assembleDebug -PLINKQR_API_BASE_URL=https://tu-backend.example.com
+./gradlew assembleDebug -PLINKQR_SAAS_BASE_URL=https://tu-backend.example.com
 ```
