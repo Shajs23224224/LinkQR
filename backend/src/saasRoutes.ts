@@ -22,7 +22,7 @@ export type SaaSStoreLike = {
   hasQrRecord(workspaceId: string, recordId: string): boolean;
   getQrSyncRecord(workspaceId: string, recordId: string): WorkspaceQrSyncRecord | null;
   upsertQrRecord(
-    record: WorkspaceQrRecord {
+    record: {
       workspaceId: string;
       recordId: string;
       type: string;
