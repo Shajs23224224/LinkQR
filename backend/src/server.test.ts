@@ -4,6 +4,10 @@ import type { GooglePlayVerifier } from "./googlePlay.js";
 import type { PurchaseStore } from "./store.js";
 import type { AuthStoreLike } from "./authRoutes.js";
 
+const emailSender = {
+  send: vi.fn().mockResolvedValue(undefined)
+};
+
 const options = {
   packageName: "com.linkqr",
   proProductId: "linkqr_pro"
@@ -155,7 +159,8 @@ describe("Google Play verification API", () => {
         enabled: true,
         sessionDays: 30
       },
-      authStore
+      authStore,
+      authEmailSender: emailSender
     });
 
     const unauthorized = await app.inject({
