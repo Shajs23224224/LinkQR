@@ -503,6 +503,10 @@ export class AuthStore {
       .run(now);
   }
 
+  healthCheck(): void {
+    this.db.prepare("SELECT 1").get();
+  }
+
   close(): void {
     this.db.close();
   }
