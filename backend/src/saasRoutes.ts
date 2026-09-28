@@ -9,6 +9,7 @@ import {
   WorkspaceQrDeleteSchema,
   WorkspaceQrUpsertSchema,
   Workspace,
+  WorkspaceQrRecord,
   WorkspaceQrSyncRecord
 } from "./saas.js";
 
