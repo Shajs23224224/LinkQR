@@ -142,7 +142,7 @@ export class SqliteApiProtectionStore {
         .prepare("DELETE FROM api_idempotency_keys WHERE expires_at <= ?")
         .run(now);
 
-      const existing = this.db
+      const existingRow = this.db
         .prepare(`
           SELECT
             idempotency_key,
@@ -156,9 +156,31 @@ export class SqliteApiProtectionStore {
           FROM api_idempotency_keys
           WHERE idempotency_key = ? AND scope = ?
         `)
-        .get(key, scope) as IdempotencyRecord | undefined;
+        .get(key, scope) as
+        | {
+            idempotency_key: string;
+            scope: string;
+            request_hash: string;
+            status_code: number;
+            response_body: string;
+            content_type: string | null;
+            created_at: number;
+            expires_at: number;
+          }
+        | undefined;
 
-      if (existing) {
+      if (existingRow) {
+        const existing: IdempotencyRecord = {
+          key: existingRow.idempotency_key,
+          scope: existingRow.scope,
+          requestHash: existingRow.request_hash,
+          statusCode: existingRow.status_code,
+          responseBody: existingRow.response_body,
+          contentType: existingRow.content_type,
+          createdAt: existingRow.created_at,
+          expiresAt: existingRow.expires_at
+        };
+
         if (existing.requestHash !== requestHash) {
           return { kind: "conflict" } as const;
         }
