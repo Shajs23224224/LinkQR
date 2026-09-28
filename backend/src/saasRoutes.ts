@@ -15,6 +15,10 @@ import {
 
 export type SaaSStoreLike = SaaSRepository;
 
+type Principal =
+  | { kind: "api-key"; user: null }
+  | { kind: "user"; user: AuthUser };
+
 function unauthorized(reply: FastifyReply) {
   return reply.code(401).send({
     error: "UNAUTHORIZED"
