@@ -32,6 +32,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Detect signed release
+        id: detect_signing
         shell: bash
         run: |
           set -euo pipefail
@@ -64,12 +65,15 @@ jobs:
 
           if [ "$marked" = "true" ] && [ "$configured" = "true" ]; then
             echo "LINKQR_SIGNED_RELEASE=true" >> "$GITHUB_ENV"
+            echo "signed_release=true" >> "$GITHUB_OUTPUT"
             echo "Release signing enabled."
           elif [ "$marked" = "true" ] && [ "$configured" = "false" ]; then
             echo "::warning::Commit is marked [signed-release], but signing secrets are not configured. Building unsigned release artifacts instead."
             echo "LINKQR_SIGNED_RELEASE=false" >> "$GITHUB_ENV"
+            echo "signed_release=false" >> "$GITHUB_OUTPUT"
           else
             echo "LINKQR_SIGNED_RELEASE=false" >> "$GITHUB_ENV"
+            echo "signed_release=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Set up JDK 17
@@ -163,7 +167,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload unsigned release APK
-        if: ${{ success() && env.LINKQR_SIGNED_RELEASE != 'true' }}
+        if: ${{ success() && steps.detect_signing.outputs.signed_release != 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: LinkQR-release-unsigned
@@ -171,7 +175,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload unsigned release AAB
-        if: ${{ success() && env.LINKQR_SIGNED_RELEASE != 'true' }}
+        if: ${{ success() && steps.detect_signing.outputs.signed_release != 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: LinkQR-release-aab-unsigned
@@ -179,7 +183,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload signed release APK
-        if: ${{ success() && env.LINKQR_SIGNED_RELEASE == 'true' }}
+        if: ${{ success() && steps.detect_signing.outputs.signed_release == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: LinkQR-release-signed
@@ -187,7 +191,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload signed release AAB
-        if: ${{ success() && env.LINKQR_SIGNED_RELEASE == 'true' }}
+        if: ${{ success() && steps.detect_signing.outputs.signed_release == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: LinkQR-release-aab-signed
