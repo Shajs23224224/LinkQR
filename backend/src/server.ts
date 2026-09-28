@@ -75,7 +75,12 @@ export function buildServer(
 
     if (route.startsWith("/v1/saas/workspaces/") && route.endsWith("/qr")) {
       metrics.incCounter("linkqr_sync_requests_total", {
-        operation: request.method === "POST" ? "push" : "list"
+        operation:
+          request.method === "POST"
+            ? "push"
+            : request.url.includes("cursor=")
+              ? "delta"
+              : "list"
       });
     }
 
