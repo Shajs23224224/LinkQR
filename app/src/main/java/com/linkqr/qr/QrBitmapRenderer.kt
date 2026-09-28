@@ -13,21 +13,13 @@ internal object QrBitmapRenderer {
     ): Bitmap {
         val width = matrix.width
         val height = matrix.height
+        val pixels = buildPixels(matrix, foreground, background)
 
         return Bitmap.createBitmap(
             width,
             height,
             Bitmap.Config.ARGB_8888
         ).also { bitmap ->
-            val pixels = IntArray(width * height)
-            var index = 0
-
-            for (y in 0 until height) {
-                for (x in 0 until width) {
-                    pixels[index++] = if (matrix[x, y]) foreground else background
-                }
-            }
-
             bitmap.setPixels(
                 pixels,
                 0,
@@ -38,6 +30,25 @@ internal object QrBitmapRenderer {
                 height
             )
         }
+    }
+
+    internal fun buildPixels(
+        matrix: BitMatrix,
+        foreground: Int,
+        background: Int
+    ): IntArray {
+        val width = matrix.width
+        val height = matrix.height
+        val pixels = IntArray(width * height)
+
+        var index = 0
+        for (y in 0 until height) {
+            for (x in 0 until width) {
+                pixels[index++] = if (matrix[x, y]) foreground else background
+            }
+        }
+
+        return pixels
     }
 
     fun requireSupportedSize(sizePx: Int) {
