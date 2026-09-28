@@ -22,6 +22,7 @@ jobs:
       LINKQR_ADMOB_BANNER_AD_UNIT_ID: ${{ secrets.LINKQR_ADMOB_BANNER_AD_UNIT_ID }}
       LINKQR_ADMOB_INTERSTITIAL_AD_UNIT_ID: ${{ secrets.LINKQR_ADMOB_INTERSTITIAL_AD_UNIT_ID }}
       LINKQR_ADMOB_REWARDED_AD_UNIT_ID: ${{ secrets.LINKQR_ADMOB_REWARDED_AD_UNIT_ID }}
+      LINKQR_KEYSTORE_B64: ${{ secrets.LINKQR_KEYSTORE_B64 }}
       LINKQR_KEYSTORE_PASSWORD: ${{ secrets.LINKQR_KEYSTORE_PASSWORD }}
       LINKQR_KEY_ALIAS: ${{ secrets.LINKQR_KEY_ALIAS }}
       LINKQR_KEY_PASSWORD: ${{ secrets.LINKQR_KEY_PASSWORD }}
@@ -33,8 +34,40 @@ jobs:
       - name: Detect signed release
         shell: bash
         run: |
+          set -euo pipefail
+
+          marked=false
           if git log -1 --pretty=%B | grep -Fq '[signed-release]'; then
+            marked=true
+          fi
+
+          configured=false
+          empty_count=0
+          for value in \
+            "$LINKQR_KEYSTORE_B64" \
+            "$LINKQR_KEYSTORE_PASSWORD" \
+            "$LINKQR_KEY_ALIAS" \
+            "$LINKQR_KEY_PASSWORD"; do
+            if [ -z "$value" ]; then
+              empty_count=$((empty_count + 1))
+            fi
+          done
+
+          if [ "$empty_count" -eq 0 ]; then
+            configured=true
+          elif [ "$empty_count" -eq 4 ]; then
+            configured=false
+          else
+            echo "::error::Release signing is partially configured. Configure all four LINKQR_KEYSTORE_* / LINKQR_KEY_ALIAS / LINKQR_KEY_PASSWORD secrets before using [signed-release]."
+            exit 1
+          fi
+
+          if [ "$marked" = "true" ] && [ "$configured" = "true" ]; then
             echo "LINKQR_SIGNED_RELEASE=true" >> "$GITHUB_ENV"
+            echo "Release signing enabled."
+          elif [ "$marked" = "true" ] && [ "$configured" = "false" ]; then
+            echo "::warning::Commit is marked [signed-release], but signing secrets are not configured. Building unsigned release artifacts instead."
+            echo "LINKQR_SIGNED_RELEASE=false" >> "$GITHUB_ENV"
           else
             echo "LINKQR_SIGNED_RELEASE=false" >> "$GITHUB_ENV"
           fi
@@ -60,14 +93,12 @@ jobs:
       - name: Restore release keystore
         shell: bash
         env:
-          LINKQR_KEYSTORE_B64: ${{ secrets.LINKQR_KEYSTORE_B64 }}
           LINKQR_KEYSTORE_FILE: ${{ runner.temp }}/linkqr-upload.jks
         run: |
           if [ "$LINKQR_SIGNED_RELEASE" != "true" ]; then
             exit 0
           fi
           set -euo pipefail
-          test -n "$LINKQR_KEYSTORE_B64"
           printf '%s' "$LINKQR_KEYSTORE_B64" | base64 --decode > "$LINKQR_KEYSTORE_FILE"
           test -s "$LINKQR_KEYSTORE_FILE"
           echo "LINKQR_KEYSTORE_FILE=$LINKQR_KEYSTORE_FILE" >> "$GITHUB_ENV"
@@ -79,9 +110,6 @@ jobs:
             exit 0
           fi
           set -euo pipefail
-          test -n "$LINKQR_KEYSTORE_PASSWORD"
-          test -n "$LINKQR_KEY_ALIAS"
-          test -n "$LINKQR_KEY_PASSWORD"
           test -n "$LINKQR_KEYSTORE_FILE"
           keytool -list \
             -keystore "$LINKQR_KEYSTORE_FILE" \
@@ -99,11 +127,7 @@ jobs:
         run: ./gradlew assembleRelease --stacktrace
 
       - name: Build release AAB
-        shell: bash
-        run: |
-          if [ "$LINKQR_SIGNED_RELEASE" = "true" ]; then
-            ./gradlew bundleRelease --stacktrace
-          fi
+        run: ./gradlew bundleRelease --stacktrace
 
       - name: Verify signed artifacts
         shell: bash
@@ -143,7 +167,15 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: LinkQR-release-unsigned
-          path: app/build/outputs/apk/release/*.apk
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+
+      - name: Upload unsigned release AAB
+        if: ${{ success() && env.LINKQR_SIGNED_RELEASE != 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: LinkQR-release-aab-unsigned
+          path: app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
 
       - name: Upload signed release APK
