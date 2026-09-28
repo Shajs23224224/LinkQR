@@ -16,6 +16,7 @@ import com.linkqr.features.home.HomeScreen
 import com.linkqr.features.pro.ProScreen
 import com.linkqr.monetization.BillingUiState
 import com.linkqr.qr.ZXingQrCodeGenerator
+import com.linkqr.sync.SaaSSyncState
 
 @Composable
 fun LinkQrNavHost(
@@ -31,7 +32,9 @@ fun LinkQrNavHost(
     authState: AuthState = AuthState.SignedOut,
     onLogin: (String, String) -> Unit = { _, _ -> },
     onRegister: (String, String, String?) -> Unit = { _, _, _ -> },
-    onLogout: () -> Unit = {}
+    onLogout: () -> Unit = {},
+    syncState: SaaSSyncState = SaaSSyncState.Idle,
+    onSync: () -> Unit = {}
 ) {
     NavHost(
         navController = navController,
@@ -72,6 +75,8 @@ fun LinkQrNavHost(
                     AccountScreen(
                         user = state.user,
                         onLogout = onLogout,
+                        onSync = onSync,
+                        syncState = syncState,
                         onBack = { navController.popBackStack() }
                     )
                 }
