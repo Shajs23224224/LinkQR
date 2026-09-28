@@ -3,14 +3,18 @@ package com.linkqr.domain.validation
 import java.net.URI
 
 object UrlValidator {
+    private val schemeRegex = Regex("^[A-Za-z][A-Za-z0-9+.-]*:")
+
     fun normalize(input: String): String? {
         val value = input.trim()
         if (value.isBlank()) return null
 
-        val candidate = if (
-            value.startsWith("http://", ignoreCase = true) ||
-            value.startsWith("https://", ignoreCase = true)
-        ) {
+        val explicitScheme = schemeRegex.find(value)?.value?.dropLast(1)?.lowercase()
+        if (explicitScheme != null && explicitScheme != "http" && explicitScheme != "https") {
+            return null
+        }
+
+        val candidate = if (explicitScheme == "http" || explicitScheme == "https") {
             value
         } else {
             "https://$value"
