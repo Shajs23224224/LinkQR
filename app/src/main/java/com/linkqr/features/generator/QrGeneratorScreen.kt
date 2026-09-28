@@ -24,6 +24,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -37,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 import androidx.core.content.ContextCompat
 import com.linkqr.data.repository.QrHistoryRepository
 import com.linkqr.domain.design.ArgbColorParser
@@ -259,37 +261,23 @@ fun QrGeneratorScreen(
             style = MaterialTheme.typography.titleMedium
         )
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            ColorPreview(currentDesign.foregroundColor)
-            Field(
-                value = foregroundHex,
-                onValueChange = {
-                    foregroundHex = it
-                    error = null
-                },
-                label = "QR",
-                placeholder = "#000000"
-            )
-        }
+        RgbColorPanel(
+            title = "Color del QR",
+            color = foregroundHex,
+            onColorChange = {
+                foregroundHex = it
+                error = null
+            }
+        )
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            ColorPreview(currentDesign.backgroundColor)
-            Field(
-                value = backgroundHex,
-                onValueChange = {
-                    backgroundHex = it
-                    error = null
-                },
-                label = "Fondo",
-                placeholder = "#FFFFFF"
-            )
-        }
+        RgbColorPanel(
+            title = "Color de fondo",
+            color = backgroundHex,
+            onColorChange = {
+                backgroundHex = it
+                error = null
+            }
+        )
 
         Field(
             value = marginText,
@@ -381,6 +369,77 @@ fun QrGeneratorScreen(
         ) {
             Text("Volver")
         }
+    }
+}
+
+
+
+@Composable
+private fun RgbColorPanel(
+    title: String,
+    color: String,
+    onColorChange: (String) -> Unit
+) {
+    val parsed = ArgbColorParser.parse(color) ?: 0xFF000000L
+    var red by remember(color) { mutableStateOf(((parsed shr 16) and 0xFF).toFloat()) }
+    var green by remember(color) { mutableStateOf(((parsed shr 8) and 0xFF).toFloat()) }
+    var blue by remember(color) { mutableStateOf((parsed and 0xFF).toFloat()) }
+
+    fun emit() {
+        val hex = "#%02X%02X%02X".format(
+            red.roundToInt(),
+            green.roundToInt(),
+            blue.roundToInt()
+        )
+        onColorChange(hex)
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(title, style = MaterialTheme.typography.bodyLarge)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ColorPreview(parsed)
+            Text(
+                text = color.uppercase(),
+                style = MaterialTheme.typography.labelLarge
+            )
+        }
+        RgbSlider("R", red, { red = it; emit() })
+        RgbSlider("G", green, { green = it; emit() })
+        RgbSlider("B", blue, { blue = it; emit() })
+    }
+}
+
+@Composable
+private fun RgbSlider(
+    channel: String,
+    value: Float,
+    onValueChange: (Float) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = channel,
+            modifier = Modifier.size(width = 24.dp, height = 24.dp),
+            style = MaterialTheme.typography.labelLarge
+        )
+        Slider(
+            value = value,
+            onValueChange = onValueChange,
+            valueRange = 0f..255f,
+            steps = 254,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = value.roundToInt().toString(),
+            modifier = Modifier.size(width = 34.dp, height = 24.dp),
+            style = MaterialTheme.typography.labelMedium
+        )
     }
 }
 
