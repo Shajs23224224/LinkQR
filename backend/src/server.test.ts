@@ -407,19 +407,19 @@ describe("API platform robustness", () => {
     protection.close();
   });
 
-  it("rejects reusing an idempotency key for a different request", async () => {
+  it("rejects reusing an idempotency key for a different successful request", async () => {
     const verifier = {
       verifyOneTimeProduct: vi.fn().mockResolvedValue({
         purchaseToken: "first",
         productId: "linkqr_pro",
-        purchaseState: 2,
-        acknowledgementState: 0
+        purchaseState: 0,
+        acknowledgementState: 1
       }),
       acknowledgeOneTimeProduct: vi.fn()
     } as unknown as GooglePlayVerifier;
 
     const store = {
-      hasPurchaseToken: vi.fn(),
+      hasPurchaseToken: vi.fn().mockReturnValue(false),
       save: vi.fn()
     } as unknown as PurchaseStore;
 
@@ -429,10 +429,11 @@ describe("API platform robustness", () => {
       apiProtectionStore: protection
     });
 
+    const key = "billing-key-5678";
     const first = await app.inject({
       method: "POST",
       url: "/v1/google-play/verify",
-      headers: { "idempotency-key": "billing-key-5678" },
+      headers: { "idempotency-key": key },
       payload: {
         purchaseToken: "first",
         productId: "linkqr_pro"
@@ -442,18 +443,19 @@ describe("API platform robustness", () => {
     const conflict = await app.inject({
       method: "POST",
       url: "/v1/google-play/verify",
-      headers: { "idempotency-key": "billing-key-5678" },
+      headers: { "idempotency-key": key },
       payload: {
         purchaseToken: "second",
         productId: "linkqr_pro"
       }
     });
 
-    expect(first.statusCode).toBe(409);
+    expect(first.statusCode).toBe(200);
     expect(conflict.statusCode).toBe(409);
     expect(conflict.json()).toEqual({
       error: "IDEMPOTENCY_KEY_REUSED"
     });
+    expect(verifier.verifyOneTimeProduct).toHaveBeenCalledOnce();
 
     await app.close();
     protection.close();
