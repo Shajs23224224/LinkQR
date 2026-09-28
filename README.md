@@ -131,5 +131,5 @@ Phase 10 keeps LinkQR lightweight for low-end Android devices and reduces avoida
 - Centralized QR bitmap sizing policy with a 768 px default.
 - Batched QR bitmap rendering through `Bitmap.setPixels` instead of calling `Bitmap.setPixel` for every pixel.
 - History flows use `distinctUntilChanged()` after domain mapping to avoid redundant UI emissions.
-- Performance-focused unit coverage for the QR bitmap renderer.
+- Pure JVM unit coverage for QR bitmap pixel conversion without requiring the Android runtime.
 - Core QR generation remains synchronous from the UI's current architecture; no network dependency was introduced into generation.
