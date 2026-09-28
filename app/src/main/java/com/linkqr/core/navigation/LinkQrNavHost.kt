@@ -32,6 +32,8 @@ fun LinkQrNavHost(
     onLogin: (String, String) -> Unit = { _, _ -> },
     onRegister: (String, String, String?) -> Unit = { _, _, _ -> },
     onResendVerification: (String) -> Unit = {},
+    onPasswordResetRequest: (String) -> Unit = {},
+    onChangePassword: (String, String) -> Unit = { _, _ -> },
     onLogout: () -> Unit = {}
 ) {
     NavHost(
@@ -73,6 +75,8 @@ fun LinkQrNavHost(
                     AccountScreen(
                         user = state.user,
                         onLogout = onLogout,
+                        onChangePassword = onChangePassword,
+                        onPasswordResetRequest = onPasswordResetRequest,
                         onBack = { navController.popBackStack() }
                     )
                 }
@@ -82,6 +86,7 @@ fun LinkQrNavHost(
                         onLogin = onLogin,
                         onRegister = onRegister,
                         onResendVerification = onResendVerification,
+                        onPasswordResetRequest = onPasswordResetRequest,
                         onBack = { navController.popBackStack() }
                     )
                 }
