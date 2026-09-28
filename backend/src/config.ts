@@ -19,7 +19,10 @@ const schema = z.object({
   LINKQR_SAAS_API_KEY: z.string().min(32).optional(),
   LINKQR_SAAS_FREE_QR_LIMIT: z.coerce.number().int().positive().default(100),
   LINKQR_SAAS_PRO_QR_LIMIT: z.coerce.number().int().positive().default(10000),
-  LINKQR_OBSERVABILITY_TOKEN: z.string().min(32).optional()
+  LINKQR_OBSERVABILITY_TOKEN: z.string().min(32).optional(),
+  LINKQR_API_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().max(10000).default(300),
+  LINKQR_API_WRITE_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().max(5000).default(120),
+  LINKQR_API_IDEMPOTENCY_TTL_HOURS: z.coerce.number().positive().max(168).default(24)
 });
 
 export function loadConfig() {
@@ -61,6 +64,11 @@ export function loadConfig() {
       proQrLimit: parsed.LINKQR_SAAS_PRO_QR_LIMIT
     },
     OBSERVABILITY_TOKEN: parsed.LINKQR_OBSERVABILITY_TOKEN,
+    API_PROTECTION: {
+      rateLimitPerMinute: parsed.LINKQR_API_RATE_LIMIT_PER_MINUTE,
+      writeRateLimitPerMinute: parsed.LINKQR_API_WRITE_RATE_LIMIT_PER_MINUTE,
+      idempotencyTtlMs: parsed.LINKQR_API_IDEMPOTENCY_TTL_HOURS * 60 * 60 * 1000
+    },
     DATABASE_BACKUP: {
       enabled:
         Boolean(parsed.DATABASE_BACKUP_DIR) &&
