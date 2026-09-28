@@ -216,3 +216,24 @@ When LINKQR_AUTH_ENABLED=true:
 - POST /v1/auth/logout
 
 The Android application remains offline-first; this phase establishes the cloud identity API that a future Android/web account UI can consume.
+
+
+## Phase 15 — Autenticación Android
+
+La aplicación Android ya puede consumir la identidad del backend sin convertir la generación de QR en una función dependiente de Internet.
+
+### Incluido
+
+- Pantalla de Cuenta con registro e inicio de sesión.
+- Sesión persistida localmente y cifrada con Android Keystore + AES-GCM.
+- Cliente HTTP ligero basado en HttpURLConnection.
+- Logout y manejo de sesiones inválidas.
+- Una sesión local válida no bloquea el funcionamiento offline de generación, historial o escáner.
+- Endpoint del backend configurable mediante la propiedad de Gradle `LINKQR_API_BASE_URL`.
+- No se embeben claves administrativas del SaaS en el APK.
+
+Para apuntar a un backend HTTPS durante el build:
+
+```bash
+./gradlew assembleDebug -PLINKQR_API_BASE_URL=https://tu-backend.example.com
+```
