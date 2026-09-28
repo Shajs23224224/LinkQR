@@ -5,13 +5,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.navigation.compose.rememberNavController
 import com.linkqr.core.di.AppContainer
 import com.linkqr.core.navigation.LinkQrNavHost
 import com.linkqr.monetization.AdMobConsentManager
-import com.linkqr.monetization.EntitlementManager
-import com.linkqr.monetization.FreeEntitlementManager
+import com.linkqr.monetization.BillingEntitlementManager
+import com.linkqr.monetization.PlayBillingManager
 
 class MainActivity : ComponentActivity() {
 
@@ -19,16 +21,23 @@ class MainActivity : ComponentActivity() {
         AppContainer(applicationContext)
     }
 
-    private val entitlementManager: EntitlementManager = FreeEntitlementManager()
+    private val entitlementManager = BillingEntitlementManager()
     private val adsReady = mutableStateOf(false)
     private val privacyOptionsRequired = mutableStateOf(false)
     private val adMobConsentManager = AdMobConsentManager()
+    private val billingManager by lazy {
+        PlayBillingManager(applicationContext) { isPro ->
+            entitlementManager.setProEnabled(isPro)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
             val navController = rememberNavController()
+            val entitlementPlan by entitlementManager.plan.collectAsState()
+            val billingState by billingManager.state.collectAsState()
 
             MaterialTheme {
                 Surface {
@@ -36,7 +45,8 @@ class MainActivity : ComponentActivity() {
                         navController = navController,
                         qrHistoryRepository = appContainer.qrHistoryRepository,
                         showAds = adsReady.value && entitlementManager.shouldShowAds(),
-                        showPrivacyOptions = privacyOptionsRequired.value && entitlementManager.shouldShowAds(),
+                        showPrivacyOptions =
+                            privacyOptionsRequired.value && entitlementPlan.name == "FREE",
                         onPrivacyOptions = {
                             adMobConsentManager.showPrivacyOptions(this) {
                                 privacyOptionsRequired.value =
@@ -44,6 +54,13 @@ class MainActivity : ComponentActivity() {
                                 adsReady.value =
                                     adMobConsentManager.canRequestAds()
                             }
+                        },
+                        proState = billingState,
+                        onPro = {
+                            billingManager.launchProPurchase(this)
+                        },
+                        onRestorePro = {
+                            billingManager.refreshPurchases()
                         }
                     )
                 }
@@ -59,5 +76,17 @@ class MainActivity : ComponentActivity() {
                 privacyOptionsRequired.value = required
             }
         )
+
+        billingManager.start()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        billingManager.refreshPurchases()
+    }
+
+    override fun onDestroy() {
+        billingManager.endConnection()
+        super.onDestroy()
     }
 }
