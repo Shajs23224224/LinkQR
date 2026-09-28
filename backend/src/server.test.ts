@@ -31,6 +31,60 @@ describe("Production hardening", () => {
     });
     expect(response.headers["cache-control"]).toBe("no-store");
     expect(response.headers["x-content-type-options"]).toBe("nosniff");
+    expect(response.headers["x-request-id"]).toMatch(/^req-/);
+
+    await app.close();
+  });
+
+
+  it("returns 503 when the readiness dependency check fails", async () => {
+    const verifier = {} as GooglePlayVerifier;
+    const store = {} as PurchaseStore;
+    const app = buildServer(verifier, store, {
+      ...options,
+      readinessCheck: () => false
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/ready"
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({
+      ready: false,
+      service: "linkqr-billing-backend"
+    });
+
+    await app.close();
+  });
+
+  it("protects metrics with the observability token", async () => {
+    const verifier = {} as GooglePlayVerifier;
+    const store = {} as PurchaseStore;
+    const token = "observability-secret-".padEnd(32, "x");
+    const app = buildServer(verifier, store, {
+      ...options,
+      observabilityToken: token
+    });
+
+    const unauthorized = await app.inject({
+      method: "GET",
+      url: "/metrics"
+    });
+    expect(unauthorized.statusCode).toBe(401);
+
+    const metrics = await app.inject({
+      method: "GET",
+      url: "/metrics",
+      headers: {
+        authorization: "Bearer " + token
+      }
+    });
+
+    expect(metrics.statusCode).toBe(200);
+    expect(metrics.headers["content-type"]).toContain("text/plain");
+    expect(metrics.body).toContain("linkqr_process_uptime_seconds");
 
     await app.close();
   });
