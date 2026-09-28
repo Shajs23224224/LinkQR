@@ -10,4 +10,5 @@ object Routes {
     const val PRO = "pro"
     const val SETTINGS = "settings"
     const val ACCOUNT = "account"
+    const val ACCOUNT = "account"
 }
