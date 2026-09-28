@@ -14,7 +14,7 @@ class SaaSSyncClient(
 ) {
     private val baseUrl = baseUrl.trimEnd('/')
 
-    suspend fun push(record: CloudQrRecord): CloudQrRecord = withContext(Dispatchers.IO) {
+    suspend fun push(record: CloudQrRecord): SyncPushResult = withContext(Dispatchers.IO) {
         val connection = openConnection(
             "$baseUrl/v1/saas/workspaces/$workspaceId/qr",
             "POST"
@@ -22,9 +22,16 @@ class SaaSSyncClient(
         execute(connection, record.toJson().toString()) { status, body ->
             val json = JSONObject(body)
             when {
-                status in 200..299 -> json.getJSONObject("record").toCloudRecord()
+                status in 200..299 ->
+                    SyncPushResult(
+                        record = json.getJSONObject("record").toCloudRecord(),
+                        conflict = false
+                    )
                 status == 409 && json.optString("error") == "SYNC_CONFLICT" ->
-                    json.getJSONObject("winner").toCloudRecord()
+                    SyncPushResult(
+                        record = json.getJSONObject("winner").toCloudRecord(),
+                        conflict = true
+                    )
                 else -> throw IOException(
                     "Cloud sync failed ($status): " + json.optString("error", "UNKNOWN_ERROR")
                 )
@@ -127,3 +134,9 @@ class SaaSSyncClient(
             deletedAt = if (isNull("deletedAt")) null else getLong("deletedAt")
         )
 }
+
+
+data class SyncPushResult(
+    val record: CloudQrRecord,
+    val conflict: Boolean
+)
