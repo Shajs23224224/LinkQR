@@ -146,11 +146,36 @@ describe("Google Play verification API", () => {
               id: "user-1",
               email: "user@example.com",
               name: "User",
-              createdAt: 1
+              createdAt: 1,
+              emailVerified: true
             }
           : null
       ),
-      revokeSession: vi.fn()
+      getSessionByToken: vi.fn((token: string) =>
+        token === "session-1"
+          ? {
+              sessionId: "session-1",
+              user: {
+                id: "user-1",
+                email: "user@example.com",
+                name: "User",
+                createdAt: 1,
+                emailVerified: true
+              },
+              createdAt: 1,
+              expiresAt: 9999999999999
+            }
+          : null
+      ),
+      listSessions: vi.fn().mockReturnValue([]),
+      revokeSession: vi.fn(),
+      revokeSessionById: vi.fn(),
+      revokeOtherSessions: vi.fn(),
+      createEmailVerificationToken: vi.fn(),
+      consumeEmailVerificationToken: vi.fn(),
+      createPasswordResetToken: vi.fn(),
+      resetPassword: vi.fn(),
+      changePassword: vi.fn()
     };
 
     const app = buildServer(verifier, store, {
