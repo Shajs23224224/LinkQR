@@ -1,10 +1,14 @@
 name: Android Signed Release
 
-on:
-  workflow_dispatch:
+"on":
+  workflow_dispatch: {}
 
 permissions:
   contents: read
+
+concurrency:
+  group: android-signed-release
+  cancel-in-progress: false
 
 jobs:
   release:
@@ -45,20 +49,26 @@ jobs:
       - name: Restore release keystore
         env:
           LINKQR_KEYSTORE_B64: ${{ secrets.LINKQR_KEYSTORE_B64 }}
+        shell: bash
         run: |
+          set -euo pipefail
           test -n "$LINKQR_KEYSTORE_B64"
           printf '%s' "$LINKQR_KEYSTORE_B64" | base64 --decode > "$LINKQR_KEYSTORE_FILE"
           test -s "$LINKQR_KEYSTORE_FILE"
 
       - name: Validate signing credentials
+        shell: bash
         run: |
+          set -euo pipefail
           test -n "$LINKQR_KEYSTORE_PASSWORD"
           test -n "$LINKQR_KEY_ALIAS"
           test -n "$LINKQR_KEY_PASSWORD"
           keytool -list             -keystore "$LINKQR_KEYSTORE_FILE"             -storepass "$LINKQR_KEYSTORE_PASSWORD"             -alias "$LINKQR_KEY_ALIAS"             >/dev/null
 
       - name: Validate AdMob production configuration
+        shell: bash
         run: |
+          set -euo pipefail
           test -n "$LINKQR_ADMOB_APP_ID"
           test -n "$LINKQR_ADMOB_BANNER_AD_UNIT_ID"
           test -n "$LINKQR_ADMOB_INTERSTITIAL_AD_UNIT_ID"
@@ -74,12 +84,16 @@ jobs:
         run: ./gradlew bundleRelease --stacktrace
 
       - name: Verify release signatures
+        shell: bash
         run: |
+          set -euo pipefail
           APK="app/build/outputs/apk/release/app-release.apk"
           AAB="app/build/outputs/bundle/release/app-release.aab"
           test -f "$APK"
           test -f "$AAB"
-          "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)/apksigner" verify --verbose "$APK"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
+          test -x "$APKSIGNER"
+          "$APKSIGNER" verify --verbose "$APK"
 
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
@@ -97,4 +111,5 @@ jobs:
 
       - name: Cleanup keystore
         if: always()
+        shell: bash
         run: rm -f "$LINKQR_KEYSTORE_FILE"
