@@ -60,8 +60,18 @@ class QrHistoryRepository(
         dao.deleteAll()
     }
 
-    suspend fun pendingSyncRecords(): List<QrRecordEntity> =
-        dao.getPendingSync()
+    suspend fun pendingSyncRecords(): List<QrRecordEntity> {
+        val pending = dao.getPendingSync()
+        return pending.map { record ->
+            if (record.syncId != null) {
+                record
+            } else {
+                val syncId = UUID.randomUUID().toString()
+                dao.updateSyncId(record.id, syncId)
+                record.copy(syncId = syncId)
+            }
+        }
+    }
 
     suspend fun markSynced(syncId: String) {
         dao.updateSyncStatus(syncId, "SYNCED")
