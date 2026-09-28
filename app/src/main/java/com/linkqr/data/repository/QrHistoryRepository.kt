@@ -7,6 +7,7 @@ import com.linkqr.domain.model.QrRecord
 import com.linkqr.domain.model.QrType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 class QrHistoryRepository(
     private val dao: QrRecordDao
