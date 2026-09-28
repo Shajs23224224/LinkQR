@@ -26,6 +26,15 @@ class LinkQrSyncWorker(
 
     override suspend fun doWork(): Result = SyncExecutionGate.mutex.withLock {
         val container = AppContainer(applicationContext)
+        val diagnostics = SyncDiagnosticStore(applicationContext)
+
+        diagnostics.record(
+            SyncDiagnosticEvent(
+                timestampMs = System.currentTimeMillis(),
+                state = "RUNNING",
+                attempt = runAttemptCount
+            )
+        )
 
         try {
             val manager = SaaSSyncManager(
@@ -34,9 +43,30 @@ class LinkQrSyncWorker(
             )
 
             val result = manager.sync()
-                ?: return@withLock Result.success(
-                    stateData(SyncExecutionState.IDLE)
+                ?: run {
+                    diagnostics.record(
+                        SyncDiagnosticEvent(
+                            timestampMs = System.currentTimeMillis(),
+                            state = SyncExecutionState.IDLE.name,
+                            attempt = runAttemptCount
+                        )
+                    )
+                    return@withLock Result.success(
+                        stateData(SyncExecutionState.IDLE)
+                    )
+                }
+
+            diagnostics.record(
+                SyncDiagnosticEvent(
+                    timestampMs = System.currentTimeMillis(),
+                    state = SyncExecutionState.SUCCESS.name,
+                    attempt = runAttemptCount,
+                    pushed = result.pushed,
+                    pulled = result.pulled,
+                    conflicts = result.conflicts,
+                    cursor = result.cursor
                 )
+            )
 
             Result.success(
                 Data.Builder()
@@ -53,41 +83,91 @@ class LinkQrSyncWorker(
             when {
                 error.statusCode == 401 -> {
                     AuthTokenStore(applicationContext).clear()
+                    diagnostics.record(
+                        SyncDiagnosticEvent(
+                            timestampMs = System.currentTimeMillis(),
+                            state = SyncExecutionState.AUTH_REQUIRED.name,
+                            attempt = runAttemptCount,
+                            errorCode = safeErrorCode(error.errorCode)
+                        )
+                    )
                     Result.failure(
                         stateData(
                             SyncExecutionState.AUTH_REQUIRED,
-                            error.errorCode
+                            safeErrorCode(error.errorCode)
                         )
                     )
                 }
 
-                isRetryable(error.statusCode) && runAttemptCount < MAX_RETRY_ATTEMPTS ->
+                isRetryable(error.statusCode) && runAttemptCount < MAX_RETRY_ATTEMPTS -> {
+                    diagnostics.record(
+                        SyncDiagnosticEvent(
+                            timestampMs = System.currentTimeMillis(),
+                            state = "RETRY_SCHEDULED",
+                            attempt = runAttemptCount,
+                            errorCode = "HTTP_" + error.statusCode
+                        )
+                    )
                     Result.retry()
+                }
 
-                else ->
+                else -> {
+                    diagnostics.record(
+                        SyncDiagnosticEvent(
+                            timestampMs = System.currentTimeMillis(),
+                            state = SyncExecutionState.FAILED.name,
+                            attempt = runAttemptCount,
+                            errorCode = "HTTP_" + error.statusCode
+                        )
+                    )
                     Result.failure(
                         stateData(
                             SyncExecutionState.FAILED,
-                            error.errorCode
+                            "HTTP_" + error.statusCode
                         )
                     )
+                }
             }
         } catch (error: IOException) {
             if (runAttemptCount < MAX_RETRY_ATTEMPTS) {
+                diagnostics.record(
+                    SyncDiagnosticEvent(
+                        timestampMs = System.currentTimeMillis(),
+                        state = "RETRY_SCHEDULED",
+                        attempt = runAttemptCount,
+                        errorCode = "NETWORK_ERROR"
+                    )
+                )
                 Result.retry()
             } else {
+                diagnostics.record(
+                    SyncDiagnosticEvent(
+                        timestampMs = System.currentTimeMillis(),
+                        state = SyncExecutionState.FAILED.name,
+                        attempt = runAttemptCount,
+                        errorCode = "NETWORK_ERROR"
+                    )
+                )
                 Result.failure(
                     stateData(
                         SyncExecutionState.FAILED,
-                        error.message ?: "NETWORK_ERROR"
+                        "NETWORK_ERROR"
                     )
                 )
             }
         } catch (error: Exception) {
+            diagnostics.record(
+                SyncDiagnosticEvent(
+                    timestampMs = System.currentTimeMillis(),
+                    state = SyncExecutionState.FAILED.name,
+                    attempt = runAttemptCount,
+                    errorCode = "SYNC_ERROR"
+                )
+            )
             Result.failure(
                 stateData(
                     SyncExecutionState.FAILED,
-                    error.message ?: "SYNC_ERROR"
+                    "SYNC_ERROR"
                 )
             )
         } finally {
@@ -104,6 +184,11 @@ class LinkQrSyncWorker(
             if (error != null) putString("error", error)
         }
         .build()
+
+    private fun safeErrorCode(value: String): String =
+        value.filter { it.isLetterOrDigit() || it == '_' || it == '-' || it == ':' }
+            .take(64)
+            .ifBlank { "REMOTE_ERROR" }
 
     private fun isRetryable(statusCode: Int): Boolean =
         statusCode == 408 ||
