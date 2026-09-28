@@ -40,6 +40,21 @@ describe("production configuration", () => {
     expect(() => loadConfig()).toThrow();
   });
 
+  it("enables automated backups when a directory and interval are configured", () => {
+    Object.assign(process.env, {
+      GOOGLE_PLAY_PACKAGE_NAME: "com.linkqr",
+      GOOGLE_PLAY_PRO_PRODUCT_ID: "linkqr_pro",
+      GOOGLE_SERVICE_ACCOUNT_JSON_B64: "test-service-account",
+      DATABASE_BACKUP_DIR: "./backups",
+      DATABASE_BACKUP_INTERVAL_HOURS: "12"
+    });
+
+    const config = loadConfig();
+
+    expect(config.DATABASE_BACKUP.enabled).toBe(true);
+    expect(config.DATABASE_BACKUP.intervalMs).toBe(12 * 60 * 60 * 1000);
+  });
+
   it("accepts a 32-character SaaS API key", () => {
     Object.assign(process.env, {
       GOOGLE_PLAY_PACKAGE_NAME: "com.linkqr",
