@@ -22,13 +22,13 @@ export const WorkspaceQrRecordSchema = z.object({
   type: z.string().trim().min(1).max(32),
   payload: z.string().min(1).max(2048),
   createdAt: z.number().int().nonnegative(),
-  updatedAt: z.number().int().nonnegative(),
+  updatedAt: z.number().int().nonnegative().default(0),
   isFavorite: z.boolean(),
   foregroundColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
   backgroundColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
   marginModules: z.number().int().min(1).max(8),
-  version: z.number().int().positive(),
-  deviceId: z.string().trim().min(1).max(128),
+  version: z.number().int().positive().default(1),
+  deviceId: z.string().trim().min(1).max(128).default("legacy-client"),
   deleted: z.boolean().default(false),
   deletedAt: z.number().int().nonnegative().nullable().default(null)
 });
@@ -58,7 +58,9 @@ export function compareSyncRecords(
   right: Pick<WorkspaceQrRecord, "version" | "updatedAt" | "deviceId">
 ): number {
   if (left.version !== right.version) return left.version > right.version ? 1 : -1;
+  if (left.deviceId !== right.deviceId) {
+    return left.deviceId < right.deviceId ? -1 : 1;
+  }
   if (left.updatedAt !== right.updatedAt) return left.updatedAt > right.updatedAt ? 1 : -1;
-  if (left.deviceId === right.deviceId) return 0;
-  return left.deviceId < right.deviceId ? -1 : 1;
+  return 0;
 }
