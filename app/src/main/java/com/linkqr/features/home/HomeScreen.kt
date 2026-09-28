@@ -98,7 +98,7 @@ fun HomeScreen(
         }
 
         Text(
-            text = "Phase 10 · Optimización",
+            text = "Phase 11 · Testing",
             style = MaterialTheme.typography.labelMedium
         )
     }
