@@ -30,27 +30,14 @@ fun AccountScreen(
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            text = "Mi cuenta",
-            style = MaterialTheme.typography.headlineMedium
-        )
+        Text("Mi cuenta", style = MaterialTheme.typography.headlineMedium)
 
         user.name?.let {
-            Text(
-                text = it,
-                style = MaterialTheme.typography.titleLarge
-            )
+            Text(it, style = MaterialTheme.typography.titleLarge)
         }
 
-        Text(
-            text = user.email,
-            style = MaterialTheme.typography.bodyLarge
-        )
-
-        Text(
-            text = "Sesión autenticada",
-            style = MaterialTheme.typography.bodyMedium
-        )
+        Text(user.email, style = MaterialTheme.typography.bodyLarge)
+        Text("Sesión autenticada", style = MaterialTheme.typography.bodyMedium)
 
         Button(
             onClick = onSync,
@@ -67,10 +54,19 @@ fun AccountScreen(
         when (val state = syncState) {
             is SaaSSyncState.Success -> {
                 Text(
-                    text = "Sincronizado con “${state.workspaceName}”. " +
-                        "${state.uploaded} enviados, ${state.downloaded} descargados.",
+                    text = "Sincronizado con “" + state.workspaceName + "”. " +
+                        state.uploaded + " cambios enviados, " +
+                        state.downloaded + " recibidos, " +
+                        state.deletionsSynced + " eliminaciones propagadas.",
                     style = MaterialTheme.typography.bodySmall
                 )
+                if (state.conflictsResolved > 0) {
+                    Text(
+                        text = state.conflictsResolved.toString() +
+                            " conflicto(s) resuelto(s) automáticamente.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
             }
             is SaaSSyncState.Error -> {
                 Text(
@@ -84,7 +80,8 @@ fun AccountScreen(
 
         Text(
             text = "Tus QR locales siguen disponibles sin conexión. " +
-                "La sincronización solo se ejecuta cuando la solicitas.",
+                "Las eliminaciones sincronizadas se conservan como tombstones " +
+                "para evitar que un QR borrado reaparezca.",
             style = MaterialTheme.typography.bodySmall
         )
 
