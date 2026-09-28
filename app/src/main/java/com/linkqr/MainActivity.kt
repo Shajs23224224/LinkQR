@@ -90,6 +90,7 @@ class MainActivity : ComponentActivity() {
                     LinkQrNavHost(
                         navController = navController,
                         qrHistoryRepository = appContainer.qrHistoryRepository,
+                        isPro = entitlementPlan == Plan.PRO,
                         showAds =
                             adsReady.value &&
                                 entitlementManager.shouldShowAds() &&
