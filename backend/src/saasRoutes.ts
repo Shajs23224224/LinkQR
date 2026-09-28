@@ -205,8 +205,9 @@ export function registerSaaSRoutes(app: FastifyInstance, store: SaaSStoreLike, c
     const workspace = store.getWorkspace(workspaceId);
     if (!workspace) return reply.code(404).send({ synced: false, error: "WORKSPACE_NOT_FOUND" });
 
-    const user = await requireUser(request, reply);
-    if (!user) return;
+    const auth = await authenticateUserOrApiKey(request, reply);
+    if (!auth) return;
+    const user = auth === "api-key" ? null : auth;
     if (!canAccessWorkspace(workspaceId, user, true, request)) return unauthorized(reply);
 
     const parsed = WorkspaceQrRecordSchema.safeParse(request.body);
@@ -228,8 +229,9 @@ export function registerSaaSRoutes(app: FastifyInstance, store: SaaSStoreLike, c
     const workspace = store.getWorkspace(workspaceId);
     if (!workspace) return reply.code(404).send({ error: "WORKSPACE_NOT_FOUND" });
 
-    const user = await requireUser(request, reply);
-    if (!user) return;
+    const auth = await authenticateUserOrApiKey(request, reply);
+    if (!auth) return;
+    const user = auth === "api-key" ? null : auth;
     if (!canAccessWorkspace(workspaceId, user, true, request)) return unauthorized(reply);
 
     return { workspaceId, records: store.listQrRecords(workspaceId) };
