@@ -34,7 +34,7 @@ function createFakeSaaSStore(): SaaSStoreLike {
     },
     countQrRecords(workspaceId) {
       return [...records.values()].filter(
-        (record) => record.workspaceId === workspaceId
+        (record) => record.workspaceId === workspaceId && !record.deleted
       ).length;
     },
     hasQrRecord(workspaceId, recordId) {
