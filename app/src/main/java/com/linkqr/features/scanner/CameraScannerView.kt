@@ -1,7 +1,6 @@
 package com.linkqr.features.scanner
 
 import android.content.Context
-import android.view.ViewGroup
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
@@ -12,10 +11,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.linkqr.scanner.QrImageAnalyzer
+import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 @Composable
@@ -23,43 +25,55 @@ fun CameraScannerView(
     onDetected: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val previewView = remember(context) {
+        PreviewView(context).apply {
+            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+            scaleType = PreviewView.ScaleType.FILL_CENTER
+        }
+    }
+
+    DisposableEffect(context, lifecycleOwner, previewView) {
+        val cameraExecutor = Executors.newSingleThreadExecutor()
+        var cameraProvider: ProcessCameraProvider? = null
+
+        bindCamera(
+            context = context,
+            lifecycleOwner = lifecycleOwner,
+            previewView = previewView,
+            cameraExecutor = cameraExecutor,
+            onDetected = onDetected
+        ) { provider ->
+            cameraProvider = provider
+        }
+
+        onDispose {
+            cameraProvider?.unbindAll()
+            cameraExecutor.shutdown()
+        }
+    }
 
     AndroidView(
         modifier = modifier.fillMaxSize(),
-        factory = { context ->
-            PreviewView(context).apply {
-                implementationMode = PreviewView.ImplementationMode.COMPATIBLE
-                scaleType = PreviewView.ScaleType.FILL_CENTER
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-                )
-
-                startCamera(
-                    context = context,
-                    lifecycleOwner = lifecycleOwner,
-                    previewView = this,
-                    onDetected = onDetected
-                )
-            }
-        },
-        update = { }
+        factory = { previewView }
     )
 }
 
-private fun startCamera(
+private fun bindCamera(
     context: Context,
-    lifecycleOwner: androidx.lifecycle.LifecycleOwner,
+    lifecycleOwner: LifecycleOwner,
     previewView: PreviewView,
-    onDetected: (String) -> Unit
+    cameraExecutor: ExecutorService,
+    onDetected: (String) -> Unit,
+    onProviderReady: (ProcessCameraProvider) -> Unit
 ) {
-    val cameraExecutor = Executors.newSingleThreadExecutor()
     val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
 
     cameraProviderFuture.addListener(
         {
             val cameraProvider = cameraProviderFuture.get()
+            onProviderReady(cameraProvider)
 
             val preview = Preview.Builder()
                 .build()
