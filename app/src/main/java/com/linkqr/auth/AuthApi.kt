@@ -12,13 +12,22 @@ data class AuthUser(
     val id: String,
     val email: String,
     val name: String?,
-    val createdAt: Long
+    val createdAt: Long,
+    val emailVerified: Boolean
 )
 
 data class AuthSession(
     val token: String,
     val expiresAt: Long,
+    val sessionId: String,
     val user: AuthUser
+)
+
+data class AuthSessionInfo(
+    val sessionId: String,
+    val createdAt: Long,
+    val expiresAt: Long,
+    val current: Boolean
 )
 
 class AuthApiException(
@@ -33,7 +42,7 @@ class AuthApi(
         email: String,
         password: String,
         name: String?
-    ): AuthSession {
+    ): AuthUser {
         val body = JSONObject()
             .put("email", email)
             .put("password", password)
@@ -50,21 +59,107 @@ class AuthApi(
             body = body
         )
 
-        return parseSession(response)
+        return parseUser(JSONObject(response).getJSONObject("user"))
     }
 
-    suspend fun login(email: String, password: String): AuthSession {
-        val body = JSONObject()
-            .put("email", email)
-            .put("password", password)
-            .toString()
-
-        return parseSession(
+    suspend fun login(email: String, password: String): AuthSession =
+        parseSession(
             request(
                 method = "POST",
                 path = "/v1/auth/login",
-                body = body
+                body = JSONObject()
+                    .put("email", email)
+                    .put("password", password)
+                    .toString()
             )
+        )
+
+    suspend fun verifyEmail(token: String): AuthUser {
+        val response = request(
+            method = "POST",
+            path = "/v1/auth/verify-email",
+            body = JSONObject().put("token", token).toString()
+        )
+        return parseUser(JSONObject(response).getJSONObject("user"))
+    }
+
+    suspend fun resendVerification(email: String) {
+        request(
+            method = "POST",
+            path = "/v1/auth/resend-verification",
+            body = JSONObject().put("email", email).toString()
+        )
+    }
+
+    suspend fun requestPasswordReset(email: String) {
+        request(
+            method = "POST",
+            path = "/v1/auth/password-reset/request",
+            body = JSONObject().put("email", email).toString()
+        )
+    }
+
+    suspend fun confirmPasswordReset(token: String, newPassword: String) {
+        request(
+            method = "POST",
+            path = "/v1/auth/password-reset/confirm",
+            body = JSONObject()
+                .put("token", token)
+                .put("password", newPassword)
+                .toString()
+        )
+    }
+
+    suspend fun changePassword(
+        token: String,
+        currentPassword: String,
+        newPassword: String
+    ): AuthSession =
+        parseSession(
+            request(
+                method = "POST",
+                path = "/v1/auth/password/change",
+                token = token,
+                body = JSONObject()
+                    .put("currentPassword", currentPassword)
+                    .put("newPassword", newPassword)
+                    .toString()
+            )
+        )
+
+    suspend fun listSessions(token: String): List<AuthSessionInfo> {
+        val json = JSONObject(
+            request(
+                method = "GET",
+                path = "/v1/auth/sessions",
+                token = token
+            )
+        )
+        val array = json.getJSONArray("sessions")
+        return List(array.length()) { index ->
+            val item = array.getJSONObject(index)
+            AuthSessionInfo(
+                sessionId = item.getString("sessionId"),
+                createdAt = item.getLong("createdAt"),
+                expiresAt = item.getLong("expiresAt"),
+                current = item.getBoolean("current")
+            )
+        }
+    }
+
+    suspend fun revokeSession(token: String, sessionId: String) {
+        request(
+            method = "DELETE",
+            path = "/v1/auth/sessions/" + sessionId,
+            token = token
+        )
+    }
+
+    suspend fun revokeOtherSessions(token: String) {
+        request(
+            method = "POST",
+            path = "/v1/auth/sessions/revoke-others",
+            token = token
         )
     }
 
@@ -92,6 +187,7 @@ class AuthApi(
         return AuthSession(
             token = session.getString("token"),
             expiresAt = session.getLong("expiresAt"),
+            sessionId = session.getString("sessionId"),
             user = parseUser(json.getJSONObject("user"))
         )
     }
@@ -101,7 +197,8 @@ class AuthApi(
             id = json.getString("id"),
             email = json.getString("email"),
             name = json.optString("name").takeIf { it.isNotBlank() && it != "null" },
-            createdAt = json.getLong("createdAt")
+            createdAt = json.getLong("createdAt"),
+            emailVerified = json.optBoolean("emailVerified", false)
         )
 
     private suspend fun request(
