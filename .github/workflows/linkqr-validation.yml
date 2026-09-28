@@ -30,4 +30,13 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "9.6.0"
-      - run: gradle :app:testDebugUnitTest :app:assembleDebug
+      - run: gradle :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease :app:bundleRelease
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linkqr-android-build-${{ github.sha }}
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/bundle/release/*.aab
+          if-no-files-found: warn
