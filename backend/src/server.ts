@@ -195,7 +195,7 @@ export function buildServer(
 
     const route = request.routeOptions?.url ?? "__unmatched__";
 
-    if (idempotency && typeof payload === "string" && reply.statusCode < 500 && options.apiProtectionStore) {
+    if (idempotency && typeof payload === "string" && reply.statusCode >= 200 && reply.statusCode < 300 && options.apiProtectionStore) {
       options.apiProtectionStore.finalizeIdempotency(
         idempotency.key,
         idempotency.scope,
