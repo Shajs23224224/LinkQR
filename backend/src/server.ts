@@ -65,7 +65,7 @@ export function buildServer(
     reply.header("Cache-Control", "no-store");
     reply.header("X-Content-Type-Options", "nosniff");
 
-    const route = request.routeOptions?.url ?? request.url.split("?")[0];
+    const route = request.routeOptions?.url ?? "__unmatched__";
 
     if (route.startsWith("/v1/auth/")) {
       metrics.incCounter("linkqr_auth_requests_total", {
@@ -117,7 +117,7 @@ export function buildServer(
 
     const durationSeconds =
       Number(process.hrtime.bigint() - startedAt) / 1_000_000_000;
-    const route = request.routeOptions?.url ?? request.url.split("?")[0];
+    const route = request.routeOptions?.url ?? "__unmatched__";
 
     metrics.incCounter("linkqr_http_requests_total", {
       method: request.method,
