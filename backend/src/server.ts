@@ -3,6 +3,9 @@ import { z } from "zod";
 import { loadConfig } from "./config.js";
 import { GooglePlayVerifier } from "./googlePlay.js";
 import { PurchaseStore } from "./store.js";
+import { SaaSStore } from "./saasStore.js";
+import { registerSaaSRoutes } from "./saasRoutes.js";
+import type { SaaSConfig } from "./saas.js";
 
 const requestSchema = z.object({
   purchaseToken: z.string().min(1).max(4096),
@@ -13,6 +16,8 @@ const requestSchema = z.object({
 export type BillingServerOptions = {
   packageName: string;
   proProductId: string;
+  saas?: SaaSConfig;
+  saasStore?: SaaSStore;
 };
 
 export function buildServer(
@@ -24,6 +29,10 @@ export function buildServer(
   options: BillingServerOptions
 ) {
   const app = Fastify({ logger: true });
+
+  if (options.saas?.enabled && options.saasStore) {
+    registerSaaSRoutes(app, options.saasStore, options.saas);
+  }
 
   app.get("/health", async () => ({
     ok: true,
@@ -107,15 +116,19 @@ async function main() {
     config.GOOGLE_SERVICE_ACCOUNT_JSON_B64
   );
   const store = new PurchaseStore(config.DATABASE_PATH);
+  const saasStore = new SaaSStore(config.DATABASE_PATH);
 
   const app = buildServer(verifier, store, {
     packageName: config.GOOGLE_PLAY_PACKAGE_NAME,
-    proProductId: config.GOOGLE_PLAY_PRO_PRODUCT_ID
+    proProductId: config.GOOGLE_PLAY_PRO_PRODUCT_ID,
+    saas: config.SAAS,
+    saasStore
   });
 
   const close = async () => {
     await app.close();
     store.close();
+    saasStore.close();
   };
 
   process.on("SIGINT", close);
