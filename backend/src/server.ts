@@ -14,6 +14,10 @@ import { getAuthenticatedUser } from "./authRoutes.js";
 import type { AuthStoreLike } from "./authRoutes.js";
 import type { AuthEmailSender } from "./authEmail.js";
 import { WebhookAuthEmailSender } from "./authEmail.js";
+import {
+  isBearerTokenAuthorized,
+  ObservabilityMetrics
+} from "./observability.js";
 
 const requestSchema = z.object({
   purchaseToken: z.string().min(1).max(4096),
@@ -31,6 +35,8 @@ export type BillingServerOptions = {
   authEmailSender?: AuthEmailSender;
   saas?: SaaSConfig;
   saasStore?: SaaSStoreLike;
+  observabilityToken?: string;
+  readinessCheck?: () => boolean | Promise<boolean>;
 };
 
 export function buildServer(
@@ -41,15 +47,114 @@ export function buildServer(
   store: Pick<PurchaseStore, "hasPurchaseToken" | "save">,
   options: BillingServerOptions
 ) {
+  const metrics = new ObservabilityMetrics();
+  const requestStartedAt = new WeakMap<object, bigint>();
+
   const app = Fastify({
     logger: true,
-    bodyLimit: 64 * 1024
+    bodyLimit: 64 * 1024,
+    requestIdHeader: "x-request-id"
   });
 
-  app.addHook("onSend", async (_request, reply, payload) => {
+  app.addHook("onRequest", async (request, reply) => {
+    requestStartedAt.set(request, process.hrtime.bigint());
+    reply.header("X-Request-ID", request.id);
+  });
+
+  app.addHook("onSend", async (request, reply, payload) => {
     reply.header("Cache-Control", "no-store");
     reply.header("X-Content-Type-Options", "nosniff");
+
+    const route = request.routeOptions?.url ?? request.url.split("?")[0];
+
+    if (route.startsWith("/v1/auth/")) {
+      metrics.incCounter("linkqr_auth_requests_total", {
+        operation: route.replace("/v1/auth/", "") || "unknown"
+      });
+    }
+
+    if (route.startsWith("/v1/saas/workspaces/") && route.endsWith("/qr")) {
+      metrics.incCounter("linkqr_sync_requests_total", {
+        operation: request.method === "POST" ? "push" : "list"
+      });
+    }
+
+    if (route === "/v1/google-play/verify") {
+      metrics.incCounter("linkqr_billing_requests_total", {
+        operation: "verify"
+      });
+    }
+
+    if (
+      typeof payload === "string" &&
+      payload.length <= 128 * 1024 &&
+      String(reply.getHeader("content-type") ?? "").includes("application/json")
+    ) {
+      try {
+        const body = JSON.parse(payload) as { error?: unknown };
+        if (body.error === "SYNC_CONFLICT") {
+          metrics.incCounter("linkqr_sync_conflicts_total");
+        }
+        if (body.error === "WORKSPACE_QUOTA_EXCEEDED") {
+          metrics.incCounter("linkqr_sync_quota_rejections_total");
+        }
+      } catch {
+        // Metrics instrumentation must never change the response path.
+      }
+    }
+
     return payload;
+  });
+
+  app.addHook("onResponse", async (request, reply) => {
+    const startedAt = requestStartedAt.get(request);
+    if (!startedAt) return;
+
+    const durationSeconds =
+      Number(process.hrtime.bigint() - startedAt) / 1_000_000_000;
+    const route = request.routeOptions?.url ?? request.url.split("?")[0];
+
+    metrics.incCounter("linkqr_http_requests_total", {
+      method: request.method,
+      route,
+      status: reply.statusCode
+    });
+    metrics.observeHistogram(
+      "linkqr_http_request_duration_seconds",
+      durationSeconds,
+      { method: request.method, route }
+    );
+
+    if (reply.statusCode >= 400) {
+      metrics.incCounter("linkqr_http_errors_total", {
+        route,
+        status: reply.statusCode
+      });
+
+      if (route.startsWith("/v1/auth/")) {
+        metrics.incCounter("linkqr_auth_errors_total", {
+          operation: route.replace("/v1/auth/", "") || "unknown",
+          status: reply.statusCode
+        });
+      }
+
+      if (route === "/v1/google-play/verify") {
+        metrics.incCounter("linkqr_billing_errors_total", {
+          status: reply.statusCode
+        });
+      }
+    }
+
+    if (durationSeconds >= 1) {
+      request.log.warn({
+        event: "slow_request",
+        requestId: request.id,
+        method: request.method,
+        route,
+        status: reply.statusCode,
+        durationMs: Math.round(durationSeconds * 1000)
+      });
+    }
   });
 
   if (options.auth?.enabled && options.authStore) {
@@ -73,15 +178,68 @@ export function buildServer(
     );
   }
 
-  app.get("/health", async () => ({
-    ok: true,
-    service: "linkqr-billing-backend"
-  }));
+  app.get("/health", async () => {
+    metrics.setGauge("linkqr_liveness", 1);
+    return {
+      ok: true,
+      service: "linkqr-billing-backend"
+    };
+  });
 
-  app.get("/ready", async () => ({
-    ready: true,
-    service: "linkqr-billing-backend"
-  }));
+  app.get("/ready", async (request, reply) => {
+    try {
+      const ready = options.readinessCheck
+        ? await options.readinessCheck()
+        : true;
+
+      metrics.setGauge("linkqr_readiness", ready ? 1 : 0);
+      metrics.setGauge("linkqr_database_health", ready ? 1 : 0);
+
+      if (!ready) {
+        return reply.code(503).send({
+          ready: false,
+          service: "linkqr-billing-backend"
+        });
+      }
+
+      return {
+        ready: true,
+        service: "linkqr-billing-backend"
+      };
+    } catch (error) {
+      metrics.setGauge("linkqr_readiness", 0);
+      metrics.setGauge("linkqr_database_health", 0);
+      request.log.error({
+        event: "readiness_check_failed",
+        requestId: request.id,
+        error: error instanceof Error ? error.name : "UNKNOWN_ERROR"
+      });
+
+      return reply.code(503).send({
+        ready: false,
+        service: "linkqr-billing-backend"
+      });
+    }
+  });
+
+  app.get("/metrics", async (request, reply) => {
+    if (!options.observabilityToken) {
+      return reply.code(404).send({
+        error: "NOT_FOUND"
+      });
+    }
+
+    const authorization = request.headers.authorization ?? "";
+    const match = /^Bearer\\s+([^\\s]+)$/i.exec(authorization);
+    if (!isBearerTokenAuthorized(match?.[1] ?? null, options.observabilityToken)) {
+      return reply.code(401).send({
+        error: "UNAUTHORIZED"
+      });
+    }
+
+    reply.header("Content-Type", "text/plain; version=0.0.4; charset=utf-8");
+    return metrics.renderPrometheus();
+  });
 
   app.post("/v1/google-play/verify", async (request, reply) => {
     const parsed = requestSchema.safeParse(request.body);
@@ -194,7 +352,14 @@ async function main() {
     authStore,
     authEmailSender,
     saas: config.SAAS,
-    saasStore
+    saasStore,
+    observabilityToken: config.OBSERVABILITY_TOKEN,
+    readinessCheck: () => {
+      store.healthCheck();
+      saasStore.healthCheck();
+      authStore.healthCheck();
+      return true;
+    }
   });
 
   const close = async () => {
