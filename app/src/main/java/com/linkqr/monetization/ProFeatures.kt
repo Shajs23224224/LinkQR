@@ -11,6 +11,6 @@ object ProFeatures {
         plan == Plan.PRO && feature.enabled
 
     enum class Feature(val enabled: Boolean) {
-        HD_EXPORT(HD_EXPORT)
+        HD_EXPORT(true)
     }
 }
