@@ -1,5 +1,10 @@
 import Fastify from "fastify";
 import { z } from "zod";
+import {
+  SqliteApiProtectionStore,
+  hashPrincipal,
+  hashRequestBody
+} from "./apiProtection.js";
 import { loadConfig } from "./config.js";
 import { GooglePlayVerifier } from "./googlePlay.js";
 import { PurchaseStore } from "./store.js";
@@ -36,6 +41,10 @@ export type BillingServerOptions = {
   saas?: SaaSConfig;
   saasStore?: SaaSRepository;
   observabilityToken?: string;
+  apiProtectionStore?: SqliteApiProtectionStore;
+  apiRateLimitPerMinute?: number;
+  apiWriteRateLimitPerMinute?: number;
+  apiIdempotencyTtlMs?: number;
   readinessCheck?: () => boolean | Promise<boolean>;
 };
 
@@ -49,6 +58,7 @@ export function buildServer(
 ) {
   const metrics = new ObservabilityMetrics();
   const requestStartedAt = new WeakMap<object, bigint>();
+  const idempotencyState = new WeakMap<object, { key: string; scope: string; requestHash: string }>();
 
   const app = Fastify({
     logger: true,
@@ -58,14 +68,143 @@ export function buildServer(
 
   app.addHook("onRequest", async (request, reply) => {
     requestStartedAt.set(request, process.hrtime.bigint());
+
+    if (request.url.startsWith("/v1/")) {
+      reply.header("X-LinkQR-API-Version", "1");
+
+      if (options.apiProtectionStore) {
+        const path = request.url.split("?")[0];
+        const principal = hashPrincipal(
+          request.headers.authorization,
+          Array.isArray(request.headers["x-linkqr-api-key"])
+            ? request.headers["x-linkqr-api-key"][0]
+            : request.headers["x-linkqr-api-key"],
+          request.ip
+        );
+        const write = ["POST", "PUT", "PATCH", "DELETE"].includes(request.method);
+        const limit = write
+          ? options.apiWriteRateLimitPerMinute ?? 120
+          : options.apiRateLimitPerMinute ?? 300;
+        const decision = options.apiProtectionStore.consumeRateLimit(
+          "api:" + request.method + ":" + path + ":" + principal,
+          limit,
+          60_000
+        );
+
+        reply.header("RateLimit-Limit", String(decision.limit));
+        reply.header("RateLimit-Remaining", String(decision.remaining));
+        reply.header("RateLimit-Reset", String(decision.retryAfterSeconds));
+
+        if (!decision.allowed) {
+          reply.header("Retry-After", String(decision.retryAfterSeconds));
+          metrics.incCounter("linkqr_api_rate_limit_rejections_total", {
+            method: request.method,
+            route: path
+          });
+          return reply.code(429).send({
+            error: "RATE_LIMITED",
+            retryAfterSeconds: decision.retryAfterSeconds
+          });
+        }
+
+        const critical =
+          request.method === "POST" &&
+          (path === "/v1/saas/workspaces" ||
+            path === "/v1/google-play/verify");
+        const idempotencyKey = request.headers["idempotency-key"];
+
+        if (critical && idempotencyKey) {
+          const key = Array.isArray(idempotencyKey)
+            ? idempotencyKey[0]
+            : idempotencyKey;
+
+          if (!/^[A-Za-z0-9._~-]{8,128}$/.test(key)) {
+            return reply.code(400).send({
+              error: "INVALID_IDEMPOTENCY_KEY"
+            });
+          }
+
+          const scope = request.method + ":" + path + ":" + principal;
+          const requestHash = hashRequestBody(request.body);
+          const claim = options.apiProtectionStore.claimIdempotency(
+            key,
+            scope,
+            requestHash,
+            options.apiIdempotencyTtlMs ?? 24 * 60 * 60 * 1000
+          );
+
+          if (claim.kind === "conflict") {
+            return reply.code(409).send({
+              error: "IDEMPOTENCY_KEY_REUSED"
+            });
+          }
+
+          if (claim.kind === "in_progress") {
+            return reply.code(409).send({
+              error: "IDEMPOTENCY_IN_PROGRESS"
+            });
+          }
+
+          if (claim.kind === "replay") {
+            if (claim.record.contentType) {
+              reply.header("Content-Type", claim.record.contentType);
+            }
+            reply.header("Idempotent-Replayed", "true");
+            return reply.code(claim.record.statusCode).send(claim.record.responseBody);
+          }
+
+          idempotencyState.set(request, { key, scope, requestHash });
+        }
+      }
+    }
+
     reply.header("X-Request-ID", request.id);
+  });
+
+  app.setErrorHandler((error, request, reply) => {
+    const statusCode =
+      typeof error.statusCode === "number" &&
+      error.statusCode >= 400 &&
+      error.statusCode < 500
+        ? error.statusCode
+        : 500;
+
+    request.log.error({
+      event: "unhandled_api_error",
+      requestId: request.id,
+      error: error instanceof Error ? error.name : "UNKNOWN_ERROR",
+      statusCode
+    });
+
+    return reply.code(statusCode).send({
+      error:
+        statusCode === 413
+          ? "PAYLOAD_TOO_LARGE"
+          : statusCode === 404
+            ? "NOT_FOUND"
+            : statusCode === 400
+              ? "INVALID_REQUEST"
+              : "INTERNAL_SERVER_ERROR"
+    });
   });
 
   app.addHook("onSend", async (request, reply, payload) => {
     reply.header("Cache-Control", "no-store");
     reply.header("X-Content-Type-Options", "nosniff");
+    const idempotency = idempotencyState.get(request);
 
     const route = request.routeOptions?.url ?? "__unmatched__";
+
+    if (idempotency && typeof payload === "string" && reply.statusCode < 500 && options.apiProtectionStore) {
+      options.apiProtectionStore.finalizeIdempotency(
+        idempotency.key,
+        idempotency.scope,
+        idempotency.requestHash,
+        reply.statusCode,
+        payload,
+        String(reply.getHeader("content-type") ?? "application/json")
+      );
+    }
 
     if (route.startsWith("/v1/auth/")) {
       metrics.incCounter("linkqr_auth_requests_total", {
@@ -349,6 +488,8 @@ async function main() {
     config.AUTH.passwordResetLifetimeMs
   );
 
+  const apiProtectionStore = new SqliteApiProtectionStore(config.DATABASE_PATH);
+
   const authEmailSender = config.AUTH.enabled
     ? new WebhookAuthEmailSender(
         config.LINKQR_AUTH_EMAIL_WEBHOOK_URL!,
@@ -365,6 +506,10 @@ async function main() {
     saas: config.SAAS,
     saasStore,
     observabilityToken: config.OBSERVABILITY_TOKEN,
+    apiProtectionStore,
+    apiRateLimitPerMinute: config.API_PROTECTION.rateLimitPerMinute,
+    apiWriteRateLimitPerMinute: config.API_PROTECTION.writeRateLimitPerMinute,
+    apiIdempotencyTtlMs: config.API_PROTECTION.idempotencyTtlMs,
     readinessCheck: () => {
       store.healthCheck();
       saasStore.healthCheck();
@@ -379,6 +524,7 @@ async function main() {
     store.close();
     saasStore.close();
     authStore.close();
+    apiProtectionStore.close();
   };
 
   process.on("SIGINT", close);
