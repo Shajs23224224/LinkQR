@@ -4,6 +4,7 @@ import type { GooglePlayVerifier } from "./googlePlay.js";
 import type { PurchaseStore } from "./store.js";
 import type { SaaSStoreLike } from "./saasRoutes.js";
 import type { SaaSPlan, Workspace, WorkspaceQrRecord } from "./saas.js";
+import { compareSyncRecords } from "./saas.js";
 import type { AuthStoreLike } from "./authRoutes.js";
 
 const baseOptions = {
@@ -39,12 +40,34 @@ function createFakeSaaSStore(): SaaSStoreLike {
     hasQrRecord(workspaceId, recordId) {
       return records.has(workspaceId + ":" + recordId);
     },
-    upsertQrRecord(record) {
-      records.set(record.workspaceId + ":" + record.recordId, record);
+    getQrRecord(workspaceId, recordId) {
+      return records.get(workspaceId + ":" + recordId) ?? null;
     },
-    listQrRecords(workspaceId) {
+    upsertQrRecord(record) {
+      const key = record.workspaceId + ":" + record.recordId;
+      const existing = records.get(key);
+      if (existing && compareSyncRecords(record, existing) < 0) {
+        return {
+          accepted: false,
+          created: false,
+          updated: false,
+          record: existing
+        };
+      }
+      records.set(key, record);
+      return {
+        accepted: true,
+        created: !existing,
+        updated: Boolean(existing),
+        record
+      };
+    },
+    listQrRecords(workspaceId, includeDeleted = false) {
       return [...records.values()]
-        .filter((record) => record.workspaceId === workspaceId)
+        .filter((record) =>
+          record.workspaceId === workspaceId &&
+          (includeDeleted || !record.deleted)
+        )
         .sort((a, b) => b.createdAt - a.createdAt);
     }
   };
@@ -139,20 +162,31 @@ describe("SaaS workspace API", () => {
         type: "URL",
         payload: "https://example.com",
         createdAt: 100,
+        updatedAt: 100,
         isFavorite: false,
         foregroundColor: "#000000",
         backgroundColor: "#FFFFFF",
-        marginModules: 4
+        marginModules: 4,
+        version: 1,
+        deviceId: "device-a",
+        deleted: false,
+        deletedAt: null
       }
     });
 
     expect(syncResponse.statusCode).toBe(200);
-    expect(syncResponse.json()).toEqual({
+    expect(syncResponse.json()).toMatchObject({
       synced: true,
       workspaceId: workspace.id,
       recordId: "qr-1",
       created: true,
-      updated: false
+      updated: false,
+      record: {
+        recordId: "qr-1",
+        version: 1,
+        deviceId: "device-a",
+        deleted: false
+      }
     });
 
     const listResponse = await app.inject({
@@ -243,10 +277,15 @@ describe("SaaS workspace API", () => {
         type: "TEXT",
         payload: "private",
         createdAt: 100,
+        updatedAt: 100,
         isFavorite: false,
         foregroundColor: "#000000",
         backgroundColor: "#FFFFFF",
-        marginModules: 4
+        marginModules: 4,
+        version: 1,
+        deviceId: "device-a",
+        deleted: false,
+        deletedAt: null
       }
     });
 
@@ -263,10 +302,15 @@ describe("SaaS workspace API", () => {
         type: "TEXT",
         payload: "forbidden",
         createdAt: 200,
+        updatedAt: 200,
         isFavorite: false,
         foregroundColor: "#000000",
         backgroundColor: "#FFFFFF",
-        marginModules: 4
+        marginModules: 4,
+        version: 1,
+        deviceId: "device-a",
+        deleted: false,
+        deletedAt: null
       }
     });
 
@@ -298,10 +342,15 @@ describe("SaaS workspace API", () => {
       type: "TEXT",
       payload: recordId,
       createdAt: 100,
+      updatedAt: 100,
       isFavorite: false,
       foregroundColor: "#000000",
       backgroundColor: "#FFFFFF",
-      marginModules: 4
+      marginModules: 4,
+      version: 1,
+      deviceId: "device-a",
+      deleted: false,
+      deletedAt: null
     });
 
     const first = await app.inject({
@@ -324,6 +373,131 @@ describe("SaaS workspace API", () => {
       synced: false,
       error: "WORKSPACE_QUOTA_EXCEEDED",
       limit: 1
+    });
+
+    await app.close();
+  });
+});
+
+
+describe("SaaS sync conflicts and tombstones", () => {
+  it("rejects an older device version and returns the winner", async () => {
+    const saasStore = createFakeSaaSStore();
+    const app = createApp(saasStore);
+    const headers = { "x-linkqr-api-key": "test-key" };
+
+    const workspace = (await app.inject({
+      method: "POST",
+      url: "/v1/saas/workspaces",
+      headers,
+      payload: { name: "Conflict workspace", plan: "FREE" }
+    })).json().workspace as Workspace;
+
+    const base = {
+      type: "TEXT",
+      payload: "winner",
+      createdAt: 100,
+      updatedAt: 300,
+      isFavorite: false,
+      foregroundColor: "#000000",
+      backgroundColor: "#FFFFFF",
+      marginModules: 4,
+      version: 2,
+      deviceId: "device-z",
+      deleted: false,
+      deletedAt: null
+    };
+
+    const first = await app.inject({
+      method: "POST",
+      url: "/v1/saas/workspaces/" + workspace.id + "/qr",
+      headers,
+      payload: { recordId: "qr-conflict", ...base }
+    });
+
+    const stale = await app.inject({
+      method: "POST",
+      url: "/v1/saas/workspaces/" + workspace.id + "/qr",
+      headers,
+      payload: {
+        recordId: "qr-conflict",
+        ...base,
+        payload: "loser",
+        updatedAt: 200,
+        deviceId: "device-a"
+      }
+    });
+
+    expect(first.statusCode).toBe(200);
+    expect(stale.statusCode).toBe(409);
+    expect(stale.json()).toMatchObject({
+      synced: false,
+      error: "SYNC_CONFLICT",
+      winner: {
+        recordId: "qr-conflict",
+        payload: "winner",
+        deviceId: "device-z",
+        version: 2
+      }
+    });
+
+    await app.close();
+  });
+
+  it("keeps tombstones in sync but excludes them from active quota/listing", async () => {
+    const saasStore = createFakeSaaSStore();
+    const app = createApp(saasStore);
+    const headers = { "x-linkqr-api-key": "test-key" };
+
+    const workspace = (await app.inject({
+      method: "POST",
+      url: "/v1/saas/workspaces",
+      headers,
+      payload: { name: "Delete workspace", plan: "FREE" }
+    })).json().workspace as Workspace;
+
+    const payload = {
+      recordId: "qr-delete",
+      type: "TEXT",
+      payload: "to-delete",
+      createdAt: 100,
+      updatedAt: 100,
+      isFavorite: false,
+      foregroundColor: "#000000",
+      backgroundColor: "#FFFFFF",
+      marginModules: 4,
+      version: 1,
+      deviceId: "device-a",
+      deleted: true,
+      deletedAt: 200
+    };
+
+    const deleted = await app.inject({
+      method: "POST",
+      url: "/v1/saas/workspaces/" + workspace.id + "/qr",
+      headers,
+      payload
+    });
+
+    const activeList = await app.inject({
+      method: "GET",
+      url: "/v1/saas/workspaces/" + workspace.id + "/qr",
+      headers
+    });
+
+    const syncList = await app.inject({
+      method: "GET",
+      url: "/v1/saas/workspaces/" + workspace.id + "/qr?includeDeleted=true",
+      headers
+    });
+
+    expect(deleted.statusCode).toBe(200);
+    expect(activeList.json().records).toHaveLength(0);
+    expect(syncList.json().records).toHaveLength(1);
+    expect(syncList.json().records[0]).toMatchObject({
+      recordId: "qr-delete",
+      deleted: true,
+      deletedAt: 200
     });
 
     await app.close();
