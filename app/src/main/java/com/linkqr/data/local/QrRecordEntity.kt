@@ -14,5 +14,8 @@ data class QrRecordEntity(
     val type: String,
     val payload: String,
     val createdAt: Long,
-    val isFavorite: Boolean = false
+    val isFavorite: Boolean = false,
+    val foregroundColor: Long = 0xFF000000,
+    val backgroundColor: Long = 0xFFFFFFFF,
+    val marginModules: Int = 4
 )

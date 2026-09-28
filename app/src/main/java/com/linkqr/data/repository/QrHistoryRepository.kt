@@ -2,6 +2,7 @@ package com.linkqr.data.repository
 
 import com.linkqr.data.local.QrRecordDao
 import com.linkqr.data.local.QrRecordEntity
+import com.linkqr.domain.model.QrDesign
 import com.linkqr.domain.model.QrRecord
 import com.linkqr.domain.model.QrType
 import kotlinx.coroutines.flow.Flow
@@ -20,14 +21,18 @@ class QrHistoryRepository(
     suspend fun save(
         type: QrType,
         payload: String,
-        createdAt: Long = System.currentTimeMillis()
+        createdAt: Long = System.currentTimeMillis(),
+        design: QrDesign = QrDesign()
     ): Long {
         return dao.insert(
             QrRecordEntity(
                 type = type.name,
                 payload = payload,
                 createdAt = createdAt,
-                isFavorite = false
+                isFavorite = false,
+                foregroundColor = design.foregroundColor,
+                backgroundColor = design.backgroundColor,
+                marginModules = design.marginModules
             )
         )
     }
@@ -51,6 +56,11 @@ class QrHistoryRepository(
                 .getOrDefault(QrType.TEXT),
             payload = entity.payload,
             createdAt = entity.createdAt,
-            isFavorite = entity.isFavorite
+            isFavorite = entity.isFavorite,
+            design = QrDesign(
+                foregroundColor = entity.foregroundColor,
+                backgroundColor = entity.backgroundColor,
+                marginModules = entity.marginModules
+            )
         )
 }

@@ -5,5 +5,6 @@ data class QrRecord(
     val type: QrType,
     val payload: String,
     val createdAt: Long,
-    val isFavorite: Boolean
+    val isFavorite: Boolean,
+    val design: QrDesign = QrDesign()
 )

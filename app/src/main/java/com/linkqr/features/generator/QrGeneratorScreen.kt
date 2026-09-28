@@ -8,7 +8,9 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,12 +33,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import com.linkqr.domain.model.QrContent
 import com.linkqr.data.repository.QrHistoryRepository
+import com.linkqr.domain.design.ArgbColorParser
+import com.linkqr.domain.design.QrDesignValidator
+import com.linkqr.domain.model.QrContent
+import com.linkqr.domain.model.QrDesign
 import com.linkqr.domain.model.QrType
 import com.linkqr.domain.qr.QrPayloadBuilder
 import com.linkqr.domain.validation.UrlValidator
@@ -58,11 +64,15 @@ fun QrGeneratorScreen(
     var first by remember(type) { mutableStateOf("") }
     var second by remember(type) { mutableStateOf("") }
     var third by remember(type) { mutableStateOf("") }
+    var foregroundHex by remember(type) { mutableStateOf("#000000") }
+    var backgroundHex by remember(type) { mutableStateOf("#FFFFFF") }
+    var marginText by remember(type) { mutableStateOf("4") }
     var error by remember(type) { mutableStateOf<String?>(null) }
     var payload by remember(type) { mutableStateOf<String?>(null) }
     var qrBitmap by remember(type) { mutableStateOf<android.graphics.Bitmap?>(null) }
     var currentRecordId by remember(type) { mutableStateOf<Long?>(null) }
     var isFavorite by remember(type) { mutableStateOf(false) }
+    var currentDesign by remember(type) { mutableStateOf(QrDesign()) }
 
     fun generate() {
         try {
@@ -91,16 +101,32 @@ fun QrGeneratorScreen(
                 )
             }
 
+            val design = QrDesign(
+                foregroundColor = ArgbColorParser.parse(foregroundHex)
+                    ?: throw IllegalArgumentException("Color del QR inválido. Usa #RRGGBB."),
+                backgroundColor = ArgbColorParser.parse(backgroundHex)
+                    ?: throw IllegalArgumentException("Color de fondo inválido. Usa #RRGGBB."),
+                marginModules = marginText.toIntOrNull()
+                    ?: throw IllegalArgumentException("El margen debe ser un número.")
+            )
+
+            QrDesignValidator.requireReadable(design)
+
             val result = QrPayloadBuilder.build(content)
             payload = result
-            qrBitmap = qrCodeGenerator.generate(result)
+            currentDesign = design
+            qrBitmap = qrCodeGenerator.generate(
+                content = result,
+                design = design
+            )
             error = null
             isFavorite = false
 
             scope.launch {
                 currentRecordId = qrHistoryRepository.save(
                     type = type,
-                    payload = result
+                    payload = result,
+                    design = design
                 )
             }
         } catch (_: NumberFormatException) {
@@ -117,10 +143,7 @@ fun QrGeneratorScreen(
     fun saveQr() {
         val bitmap = qrBitmap ?: return
         try {
-            exporter.saveToGallery(
-                bitmap,
-                "LinkQR_" + System.currentTimeMillis()
-            )
+            exporter.saveToGallery(bitmap, "LinkQR_" + System.currentTimeMillis())
             Toast.makeText(context, "QR guardado en Imágenes/LinkQR", Toast.LENGTH_SHORT).show()
         } catch (exception: Exception) {
             Toast.makeText(
@@ -171,12 +194,7 @@ fun QrGeneratorScreen(
         }
 
         val permission = Manifest.permission.WRITE_EXTERNAL_STORAGE
-        if (
-            ContextCompat.checkSelfPermission(
-                context,
-                permission
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
+        if (ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED) {
             saveQr()
         } else {
             storagePermissionLauncher.launch(permission)
@@ -198,16 +216,33 @@ fun QrGeneratorScreen(
         when (type) {
             QrType.URL -> Field(first, { first = it; error = null }, "URL", "ejemplo.com")
             QrType.WHATSAPP -> {
-                Field(first, { first = it; error = null }, "Número con código de país", "573001234567", KeyboardType.Phone)
+                Field(
+                    first,
+                    { first = it; error = null },
+                    "Número con código de país",
+                    "573001234567",
+                    KeyboardType.Phone
+                )
                 Field(second, { second = it; error = null }, "Mensaje (opcional)", "Hola...")
             }
-            QrType.TEXT -> Field(first, { first = it; error = null }, "Texto", "Escribe el contenido")
+            QrType.TEXT -> Field(
+                first,
+                { first = it; error = null },
+                "Texto",
+                "Escribe el contenido"
+            )
             QrType.WIFI -> {
                 Field(first, { first = it; error = null }, "Nombre de red (SSID)", "Mi Wi-Fi")
                 Field(second, { second = it; error = null }, "Contraseña", "Contraseña")
                 Field(third, { third = it; error = null }, "Seguridad", "WPA, WEP o NOPASS")
             }
-            QrType.PHONE -> Field(first, { first = it; error = null }, "Número telefónico", "+57 300 123 4567", KeyboardType.Phone)
+            QrType.PHONE -> Field(
+                first,
+                { first = it; error = null },
+                "Número telefónico",
+                "+57 300 123 4567",
+                KeyboardType.Phone
+            )
             QrType.EMAIL -> {
                 Field(first, { first = it; error = null }, "Correo", "persona@ejemplo.com", KeyboardType.Email)
                 Field(second, { second = it; error = null }, "Asunto (opcional)", "Asunto")
@@ -218,6 +253,59 @@ fun QrGeneratorScreen(
                 Field(second, { second = it; error = null }, "Longitud", "-76.5320", KeyboardType.Decimal)
             }
         }
+
+        Text(
+            text = "Personalización",
+            style = MaterialTheme.typography.titleMedium
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            ColorPreview(currentDesign.foregroundColor)
+            Field(
+                value = foregroundHex,
+                onValueChange = {
+                    foregroundHex = it
+                    error = null
+                },
+                label = "QR",
+                placeholder = "#000000"
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            ColorPreview(currentDesign.backgroundColor)
+            Field(
+                value = backgroundHex,
+                onValueChange = {
+                    backgroundHex = it
+                    error = null
+                },
+                label = "Fondo",
+                placeholder = "#FFFFFF"
+            )
+        }
+
+        Field(
+            value = marginText,
+            onValueChange = {
+                marginText = it.filter(Char::isDigit)
+                error = null
+            },
+            label = "Margen (1–8 módulos)",
+            placeholder = "4",
+            keyboardType = KeyboardType.Number
+        )
+
+        Text(
+            text = "Usa colores con suficiente contraste para conservar la lectura del QR.",
+            style = MaterialTheme.typography.bodySmall
+        )
 
         error?.let {
             Text(
@@ -269,6 +357,16 @@ fun QrGeneratorScreen(
                 Text(if (isFavorite) "★ Favorito" else "☆ Añadir a favoritos")
             }
 
+            Text(
+                text = "Diseño: " +
+                    ArgbColorParser.format(currentDesign.foregroundColor) +
+                    " / " +
+                    ArgbColorParser.format(currentDesign.backgroundColor) +
+                    " · margen " +
+                    currentDesign.marginModules,
+                style = MaterialTheme.typography.bodySmall
+            )
+
             payload?.let {
                 Text(
                     text = it,
@@ -284,6 +382,15 @@ fun QrGeneratorScreen(
             Text("Volver")
         }
     }
+}
+
+@Composable
+private fun ColorPreview(color: Long) {
+    Box(
+        modifier = Modifier
+            .size(52.dp)
+            .background(Color(color))
+    )
 }
 
 @Composable
