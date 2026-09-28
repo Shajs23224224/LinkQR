@@ -22,6 +22,7 @@ export type SaaSStoreLike = {
     type: string;
     payload: string;
     createdAt: number;
+    updatedAt: number;
     isFavorite: boolean;
     foregroundColor: string;
     backgroundColor: string;
@@ -33,6 +34,7 @@ export type SaaSStoreLike = {
     type: string;
     payload: string;
     createdAt: number;
+    updatedAt: number;
     isFavorite: boolean;
     foregroundColor: string;
     backgroundColor: string;
