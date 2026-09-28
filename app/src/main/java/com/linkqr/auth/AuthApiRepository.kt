@@ -124,11 +124,11 @@ class AuthApiRepository(
             val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
             ApiResponse(code, runCatching { JSONObject(text) }.getOrDefault(JSONObject()))
         } catch (_: IOException) {
-            ApiResponse(null, JSONObject().put("error", "NETWORK_ERROR"))
+            ApiResponse(-1, JSONObject().put("error", "NETWORK_ERROR"))
         } finally {
             connection.disconnect()
         }
     }
 
-    private data class ApiResponse(val code: Int?, val body: JSONObject)
+    private data class ApiResponse(val code: Int, val body: JSONObject)
 }
