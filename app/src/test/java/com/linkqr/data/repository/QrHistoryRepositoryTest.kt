@@ -104,9 +104,10 @@ class QrHistoryRepositoryTest {
         repository.save(QrType.TEXT, "local", 100L)
 
         val local = repository.pendingSyncRecords().single()
+        val syncId = requireNotNull(local.syncId)
         val remote = CloudQrRecord(
             workspaceId = "workspace",
-            recordId = requireNotNull(local.syncId),
+            recordId = syncId,
             type = "TEXT",
             payload = "remote",
             createdAt = 100L,
@@ -124,7 +125,7 @@ class QrHistoryRepositoryTest {
         assertTrue(repository.applyRemote(remote))
         assertTrue(repository.observeAll().first().isEmpty())
 
-        val stored = repository.pendingSyncRecords().single()
+        val stored = requireNotNull(dao.findBySyncId(syncId))
         assertEquals(2L, stored.version)
         assertEquals("SYNCED", stored.syncStatus)
         assertEquals(remote.deletedAt, stored.deletedAt)
