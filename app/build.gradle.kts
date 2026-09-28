@@ -12,6 +12,13 @@ val admobBannerAdUnitId = providers.gradleProperty("LINKQR_ADMOB_BANNER_AD_UNIT_
     .orElse("ca-app-pub-3940256099942544/9214589741")
     .get()
 
+val releaseSaasBaseUrl = providers.gradleProperty("LINKQR_SAAS_BASE_URL")
+    .orElse("https://api.example.invalid")
+    .get()
+
+fun quoteBuildConfigString(value: String): String =
+    """ + value.replace("\\", "\\\\").replace(""", "\\"") + """
+
 android {
     namespace = "com.linkqr"
     compileSdk = 37
@@ -31,8 +38,18 @@ android {
             buildConfigField(
                 "String",
                 "ADMOB_BANNER_AD_UNIT_ID",
-                "\"ca-app-pub-3940256099942544/9214589741\""
+                ""ca-app-pub-3940256099942544/9214589741""
             )
+            buildConfigField(
+                "String",
+                "SAAS_BASE_URL",
+                quoteBuildConfigString(
+                    providers.gradleProperty("LINKQR_SAAS_BASE_URL")
+                        .orElse("http://10.0.2.2:8080")
+                        .get()
+                )
+            )
+            manifestPlaceholders["ALLOW_CLEARTEXT_TRAFFIC"] = "true"
         }
 
         release {
@@ -42,8 +59,14 @@ android {
             buildConfigField(
                 "String",
                 "ADMOB_BANNER_AD_UNIT_ID",
-                "\"$admobBannerAdUnitId\""
+                ""$admobBannerAdUnitId""
             )
+            buildConfigField(
+                "String",
+                "SAAS_BASE_URL",
+                quoteBuildConfigString(releaseSaasBaseUrl)
+            )
+            manifestPlaceholders["ALLOW_CLEARTEXT_TRAFFIC"] = "false"
         }
     }
 

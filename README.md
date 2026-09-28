@@ -215,4 +215,7 @@ When LINKQR_AUTH_ENABLED=true:
 - GET /v1/auth/me
 - POST /v1/auth/logout
 
-The Android application remains offline-first; this phase establishes the cloud identity API that a future Android/web account UI can consume.
+Android now includes a functional account screen with registration, login, session restoration and logout. Authentication remains optional: QR generation, history, favorites and scanning continue to work offline without an account.
+
+
+See `docs/AUTH.md` for the authentication flow and deployment configuration.

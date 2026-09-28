@@ -5,8 +5,11 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.linkqr.auth.AuthState
 import com.linkqr.data.repository.QrHistoryRepository
 import com.linkqr.domain.model.QrType
+import com.linkqr.features.auth.AccountScreen
+import com.linkqr.features.auth.AuthScreen
 import com.linkqr.features.generator.QrGeneratorScreen
 import com.linkqr.features.history.QrHistoryScreen
 import com.linkqr.features.home.HomeScreen
@@ -24,13 +27,19 @@ fun LinkQrNavHost(
     onPrivacyOptions: () -> Unit = {},
     proState: BillingUiState = BillingUiState(),
     onPro: () -> Unit = {},
-    onRestorePro: () -> Unit = {}
+    onRestorePro: () -> Unit = {},
+    authState: AuthState = AuthState.SignedOut,
+    onLogin: (String, String) -> Unit = { _, _ -> },
+    onRegister: (String, String, String?) -> Unit = { _, _, _ -> },
+    onLogout: () -> Unit = {}
 ) {
     NavHost(
         navController = navController,
         startDestination = Routes.HOME
     ) {
         composable(Routes.HOME) {
+            val authenticatedUser = (authState as? AuthState.Authenticated)?.user
+
             HomeScreen(
                 onGenerate = { type ->
                     navController.navigate("generator/" + type.name)
@@ -47,10 +56,34 @@ fun LinkQrNavHost(
                 onPro = {
                     navController.navigate(Routes.PRO)
                 },
+                onAccount = {
+                    navController.navigate(Routes.ACCOUNT)
+                },
+                accountEmail = authenticatedUser?.email,
                 showAds = showAds,
                 showPrivacyOptions = showPrivacyOptions,
                 onPrivacyOptions = onPrivacyOptions
             )
+        }
+
+        composable(Routes.ACCOUNT) {
+            when (val state = authState) {
+                is AuthState.Authenticated -> {
+                    AccountScreen(
+                        user = state.user,
+                        onLogout = onLogout,
+                        onBack = { navController.popBackStack() }
+                    )
+                }
+                else -> {
+                    AuthScreen(
+                        state = state,
+                        onLogin = onLogin,
+                        onRegister = onRegister,
+                        onBack = { navController.popBackStack() }
+                    )
+                }
+            }
         }
 
         composable(Routes.GENERATOR) { backStackEntry ->

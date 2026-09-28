@@ -24,6 +24,8 @@ fun HomeScreen(
     onFavorites: () -> Unit,
     onScanner: () -> Unit,
     onPro: () -> Unit,
+    onAccount: () -> Unit,
+    accountEmail: String? = null,
     showAds: Boolean = false,
     showPrivacyOptions: Boolean = false,
     onPrivacyOptions: () -> Unit = {}
@@ -44,6 +46,16 @@ fun HomeScreen(
             text = "Genera, guarda y administra tus códigos QR sin conexión.",
             style = MaterialTheme.typography.bodyLarge
         )
+
+        OutlinedButton(
+            onClick = onAccount,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = accountEmail?.let { "Cuenta · $it" }
+                    ?: "Iniciar sesión"
+            )
+        }
 
         QrType.entries.forEach { type ->
             Button(
@@ -98,7 +110,7 @@ fun HomeScreen(
         }
 
         Text(
-            text = "Phase 13 · Preparación SaaS",
+            text = "Phase 14 · Autenticación de usuarios",
             style = MaterialTheme.typography.labelMedium
         )
     }

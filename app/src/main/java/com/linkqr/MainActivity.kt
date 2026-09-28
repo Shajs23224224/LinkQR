@@ -9,6 +9,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.navigation.compose.rememberNavController
+import com.linkqr.auth.AuthApi
+import com.linkqr.auth.AuthManager
+import com.linkqr.auth.AuthTokenStore
 import com.linkqr.core.di.AppContainer
 import com.linkqr.core.navigation.LinkQrNavHost
 import com.linkqr.monetization.AdMobConsentManager
@@ -26,6 +29,14 @@ class MainActivity : ComponentActivity() {
     private val adsReady = mutableStateOf(false)
     private val privacyOptionsRequired = mutableStateOf(false)
     private val adMobConsentManager = AdMobConsentManager()
+
+    private val authManager by lazy {
+        AuthManager(
+            api = AuthApi(),
+            tokenStore = AuthTokenStore(applicationContext)
+        )
+    }
+
     private val billingManager by lazy {
         PlayBillingManager(applicationContext) { isPro ->
             entitlementManager.setProEnabled(isPro)
@@ -39,6 +50,7 @@ class MainActivity : ComponentActivity() {
             val navController = rememberNavController()
             val entitlementPlan by entitlementManager.plan.collectAsState()
             val billingState by billingManager.state.collectAsState()
+            val authState by authManager.state.collectAsState()
 
             MaterialTheme {
                 Surface {
@@ -62,11 +74,17 @@ class MainActivity : ComponentActivity() {
                         },
                         onRestorePro = {
                             billingManager.refreshPurchases()
-                        }
+                        },
+                        authState = authState,
+                        onLogin = authManager::login,
+                        onRegister = authManager::register,
+                        onLogout = authManager::logout
                     )
                 }
             }
         }
+
+        authManager.initialize()
 
         adMobConsentManager.requestConsentAndInitialize(
             activity = this,
@@ -88,6 +106,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         billingManager.endConnection()
+        authManager.close()
         super.onDestroy()
     }
 }
