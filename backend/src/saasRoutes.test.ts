@@ -12,6 +12,10 @@ const baseOptions = {
   proProductId: "linkqr_pro"
 };
 
+const authEmailSender = {
+  send: vi.fn().mockResolvedValue(undefined)
+};
+
 function createFakeSaaSStore(): SaaSStoreLike {
   const workspaces = new Map<string, Workspace>();
   const records = new Map<string, WorkspaceQrRecord>();
@@ -89,6 +93,7 @@ function createApp(
           }
         : undefined,
       authStore,
+      authEmailSender: authStore ? authEmailSender : undefined,
       saas: {
         enabled: true,
         apiKey: "test-key",
