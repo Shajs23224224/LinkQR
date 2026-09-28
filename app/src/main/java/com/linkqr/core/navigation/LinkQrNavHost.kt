@@ -1,40 +1,59 @@
 package com.linkqr.core.navigation
 
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.linkqr.features.generator.UrlQrGeneratorScreen
+import com.linkqr.features.home.HomeScreen
+import com.linkqr.qr.ZXingQrCodeGenerator
 
 @Composable
-fun LinkQrNavHost(navController: NavHostController) {
+fun LinkQrNavHost(
+    navController: NavHostController,
+    qrCodeGenerator: ZXingQrCodeGenerator = ZXingQrCodeGenerator()
+) {
     NavHost(
         navController = navController,
         startDestination = Routes.HOME
     ) {
         composable(Routes.HOME) {
-            Text("LinkQR")
+            HomeScreen(
+                onGenerateUrl = {
+                    navController.navigate("generator/URL")
+                }
+            )
         }
-        composable(Routes.GENERATOR) {
-            Text("Generator")
+
+        composable(Routes.GENERATOR) { backStackEntry ->
+            when (backStackEntry.arguments?.getString("type")) {
+                "URL" -> {
+                    UrlQrGeneratorScreen(
+                        qrCodeGenerator = qrCodeGenerator,
+                        onBack = { navController.popBackStack() }
+                    )
+                }
+                else -> Unit
+            }
         }
+
         composable(Routes.PREVIEW) {
-            Text("Preview")
+            androidx.compose.material3.Text("Preview")
         }
         composable(Routes.HISTORY) {
-            Text("History")
+            androidx.compose.material3.Text("History")
         }
         composable(Routes.FAVORITES) {
-            Text("Favorites")
+            androidx.compose.material3.Text("Favorites")
         }
         composable(Routes.SCANNER) {
-            Text("Scanner")
+            androidx.compose.material3.Text("Scanner")
         }
         composable(Routes.PRO) {
-            Text("Pro")
+            androidx.compose.material3.Text("Pro")
         }
         composable(Routes.SETTINGS) {
-            Text("Settings")
+            androidx.compose.material3.Text("Settings")
         }
     }
 }
