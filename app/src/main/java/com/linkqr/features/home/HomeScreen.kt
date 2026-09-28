@@ -20,7 +20,8 @@ import com.linkqr.domain.model.QrType
 fun HomeScreen(
     onGenerate: (QrType) -> Unit,
     onHistory: () -> Unit,
-    onFavorites: () -> Unit
+    onFavorites: () -> Unit,
+    onScanner: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -60,6 +61,13 @@ fun HomeScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Favoritos")
+        }
+
+        OutlinedButton(
+            onClick = onScanner,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Escanear QR")
         }
 
         Text(
