@@ -1,7 +1,9 @@
 package com.linkqr.core.navigation
 
+import android.app.Activity
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -14,6 +16,7 @@ import com.linkqr.features.generator.QrGeneratorScreen
 import com.linkqr.features.history.QrHistoryScreen
 import com.linkqr.features.home.HomeScreen
 import com.linkqr.features.pro.ProScreen
+import com.linkqr.monetization.AdMobFullScreenManager
 import com.linkqr.monetization.BillingUiState
 import com.linkqr.qr.ZXingQrCodeGenerator
 
@@ -23,6 +26,9 @@ fun LinkQrNavHost(
     qrCodeGenerator: ZXingQrCodeGenerator = ZXingQrCodeGenerator(),
     qrHistoryRepository: QrHistoryRepository,
     showAds: Boolean = false,
+    adMobFullScreenManager: AdMobFullScreenManager? = null,
+    showRewardedAdOption: Boolean = false,
+    onWatchRewardedAd: () -> Unit = {},
     showPrivacyOptions: Boolean = false,
     onPrivacyOptions: () -> Unit = {},
     proState: BillingUiState = BillingUiState(),
@@ -36,6 +42,8 @@ fun LinkQrNavHost(
     onChangePassword: (String, String) -> Unit = { _, _ -> },
     onLogout: () -> Unit = {}
 ) {
+    val activity = LocalContext.current as? Activity
+
     NavHost(
         navController = navController,
         startDestination = Routes.HOME
@@ -45,7 +53,13 @@ fun LinkQrNavHost(
 
             HomeScreen(
                 onGenerate = { type ->
-                    navController.navigate("generator/" + type.name)
+                    if (showAds && activity != null && adMobFullScreenManager != null) {
+                        adMobFullScreenManager.maybeShowInterstitial(activity) {
+                            navController.navigate("generator/" + type.name)
+                        }
+                    } else {
+                        navController.navigate("generator/" + type.name)
+                    }
                 },
                 onHistory = {
                     navController.navigate(Routes.HISTORY)
@@ -64,6 +78,8 @@ fun LinkQrNavHost(
                 },
                 accountEmail = authenticatedUser?.email,
                 showAds = showAds,
+                showRewardedAdOption = showRewardedAdOption,
+                onWatchRewardedAd = onWatchRewardedAd,
                 showPrivacyOptions = showPrivacyOptions,
                 onPrivacyOptions = onPrivacyOptions
             )
