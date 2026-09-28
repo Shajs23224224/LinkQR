@@ -277,3 +277,9 @@ La Fase 17 cierra el núcleo de sincronización multi-dispositivo. A partir de a
 La arquitectura detallada, dependencias y gates de salida están en [docs/ROADMAP-18-ONWARD.md](docs/ROADMAP-18-ONWARD.md).
 
 La regla del proyecto permanece: **implementar → compilar → probar → revisar → corregir → congelar → siguiente fase**.
+
+## Phase 18 — Hardening de producción y Release Candidate
+
+La Fase 18 convierte el estado actual en una candidate de producción verificable: R8/resource shrinking en release, límites y headers HTTP, readiness del backend, contenedor no-root, claves SaaS con mínimo de 32 caracteres y CI de APK/AAB de release.
+
+See `docs/PHASE-18.md` for the exact scope and exit gate.
