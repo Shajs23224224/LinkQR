@@ -75,12 +75,17 @@ describe("Google Play verification API", () => {
 
   it("requires an authenticated user for purchase attribution when auth is enabled", async () => {
     const verifier = {
-      verifyOneTimeProduct: vi.fn(),
-      acknowledgeOneTimeProduct: vi.fn()
+      verifyOneTimeProduct: vi.fn().mockResolvedValue({
+        purchaseToken: "token-123",
+        productId: "linkqr_pro",
+        purchaseState: 0,
+        acknowledgementState: 0
+      }),
+      acknowledgeOneTimeProduct: vi.fn().mockResolvedValue(undefined)
     } as unknown as GooglePlayVerifier;
 
     const store = {
-      hasPurchaseToken: vi.fn(),
+      hasPurchaseToken: vi.fn().mockReturnValue(false),
       save: vi.fn()
     } as unknown as PurchaseStore;
 

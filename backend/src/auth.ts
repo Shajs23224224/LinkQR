@@ -29,6 +29,7 @@ const SCRYPT_N = 32_768;
 const SCRYPT_R = 8;
 const SCRYPT_P = 1;
 const KEY_LENGTH = 64;
+const SCRYPT_MAXMEM = 64 * 1024 * 1024;
 
 export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -39,7 +40,8 @@ export function hashPassword(password: string): string {
   const hash = scryptSync(password, salt, KEY_LENGTH, {
     N: SCRYPT_N,
     r: SCRYPT_R,
-    p: SCRYPT_P
+    p: SCRYPT_P,
+    maxmem: SCRYPT_MAXMEM
   }).toString("hex");
 
   return `scrypt$${SCRYPT_N}$${SCRYPT_R}$${SCRYPT_P}$${salt}$${hash}`;
@@ -60,7 +62,12 @@ export function verifyPassword(password: string, encoded: string): boolean {
   if (!salt || !storedHash || !/^[0-9a-f]+$/i.test(storedHash)) return false;
 
   try {
-    const computed = scryptSync(password, salt, KEY_LENGTH, { N: n, r, p });
+    const computed = scryptSync(password, salt, KEY_LENGTH, {
+      N: n,
+      r,
+      p,
+      maxmem: SCRYPT_MAXMEM
+    });
     const stored = Buffer.from(storedHash, "hex");
     return stored.length === computed.length && timingSafeEqual(stored, computed);
   } catch {
