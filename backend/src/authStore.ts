@@ -361,31 +361,42 @@ export class AuthStore {
   }
 
   consumeEmailVerificationToken(token: string, now = Date.now()): AuthUser | null {
-    const row = this.db
-      .prepare(`
-        SELECT u.user_id, u.email, u.display_name, u.password_hash, u.created_at, u.email_verified_at
-        FROM email_verification_tokens t
-        INNER JOIN users u ON u.user_id = t.user_id
-        WHERE t.token_hash = ?
-          AND t.used_at IS NULL
-          AND t.expires_at > ?
-      `)
-      .get(hashOpaqueToken(token), now) as UserRow | undefined;
+    const tokenHash = hashOpaqueToken(token);
+    const consume = this.db.transaction(() => {
+      const result = this.db
+        .prepare(`
+          UPDATE email_verification_tokens
+          SET used_at = ?
+          WHERE token_hash = ?
+            AND used_at IS NULL
+            AND expires_at > ?
+        `)
+        .run(now, tokenHash, now);
 
-    if (!row) return null;
+      if (result.changes !== 1) return null;
 
-    this.db
-      .prepare("UPDATE email_verification_tokens SET used_at = ? WHERE token_hash = ?")
-      .run(now, hashOpaqueToken(token));
+      const row = this.db
+        .prepare(`
+          SELECT u.user_id, u.email, u.display_name, u.password_hash, u.created_at, u.email_verified_at
+          FROM email_verification_tokens t
+          INNER JOIN users u ON u.user_id = t.user_id
+          WHERE t.token_hash = ?
+        `)
+        .get(tokenHash) as UserRow | undefined;
 
-    this.db
-      .prepare("UPDATE users SET email_verified_at = ? WHERE user_id = ?")
-      .run(now, row.user_id);
+      if (!row) return null;
 
-    return this.toUser({
-      ...row,
-      email_verified_at: now
+      this.db
+        .prepare("UPDATE users SET email_verified_at = ? WHERE user_id = ?")
+        .run(now, row.user_id);
+
+      return this.toUser({
+        ...row,
+        email_verified_at: now
+      });
     });
+
+    return consume();
   }
 
   createPasswordResetToken(
@@ -424,30 +435,47 @@ export class AuthStore {
     newPassword: string,
     now = Date.now()
   ): AuthUser | null {
-    const row = this.db
-      .prepare(`
-        SELECT u.user_id, u.email, u.display_name, u.password_hash, u.created_at, u.email_verified_at
-        FROM password_reset_tokens t
-        INNER JOIN users u ON u.user_id = t.user_id
-        WHERE t.token_hash = ?
-          AND t.used_at IS NULL
-          AND t.expires_at > ?
-      `)
-      .get(hashOpaqueToken(token), now) as UserRow | undefined;
+    const tokenHash = hashOpaqueToken(token);
+    const reset = this.db.transaction(() => {
+      const result = this.db
+        .prepare(`
+          UPDATE password_reset_tokens
+          SET used_at = ?
+          WHERE token_hash = ?
+            AND used_at IS NULL
+            AND expires_at > ?
+        `)
+        .run(now, tokenHash, now);
 
-    if (!row) return null;
+      if (result.changes !== 1) return null;
 
-    this.db
-      .prepare("UPDATE password_reset_tokens SET used_at = ? WHERE token_hash = ?")
-      .run(now, hashOpaqueToken(token));
+      const row = this.db
+        .prepare(`
+          SELECT u.user_id, u.email, u.display_name, u.password_hash, u.created_at, u.email_verified_at
+          FROM password_reset_tokens t
+          INNER JOIN users u ON u.user_id = t.user_id
+          WHERE t.token_hash = ?
+        `)
+        .get(tokenHash) as UserRow | undefined;
 
-    this.db
-      .prepare("UPDATE users SET password_hash = ? WHERE user_id = ?")
-      .run(hashPassword(newPassword), row.user_id);
+      if (!row) return null;
 
-    this.revokeAllSessionsForUser(row.user_id, now);
+      this.db
+        .prepare("UPDATE users SET password_hash = ? WHERE user_id = ?")
+        .run(hashPassword(newPassword), row.user_id);
 
-    return this.toUser(row);
+      this.db
+        .prepare(`
+          UPDATE auth_sessions
+          SET revoked_at = ?
+          WHERE user_id = ? AND revoked_at IS NULL
+        `)
+        .run(now, row.user_id);
+
+      return this.toUser(row);
+    });
+
+    return reset();
   }
 
   changePassword(
