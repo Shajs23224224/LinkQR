@@ -6,7 +6,11 @@ plugins {
 
 fun configValue(name: String, fallback: String): String =
     providers.gradleProperty(name)
-        .orElse(providers.environmentVariable(name))
+        .filter { it.isNotBlank() }
+        .orElse(
+            providers.environmentVariable(name)
+                .filter { it.isNotBlank() }
+        )
         .orElse(fallback)
         .get()
 
