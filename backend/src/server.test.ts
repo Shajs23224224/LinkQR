@@ -9,6 +9,48 @@ const options = {
   proProductId: "linkqr_pro"
 };
 
+describe("Production hardening", () => {
+  it("exposes readiness and security headers", async () => {
+    const verifier = {} as GooglePlayVerifier;
+    const store = {} as PurchaseStore;
+    const app = buildServer(verifier, store, options);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/ready"
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      ready: true,
+      service: "linkqr-billing-backend"
+    });
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(response.headers["x-content-type-options"]).toBe("nosniff");
+
+    await app.close();
+  });
+
+  it("rejects oversized request bodies", async () => {
+    const verifier = {} as GooglePlayVerifier;
+    const store = {} as PurchaseStore;
+    const app = buildServer(verifier, store, options);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/google-play/verify",
+      payload: {
+        purchaseToken: "x".repeat(70_000),
+        productId: "linkqr_pro"
+      }
+    });
+
+    expect(response.statusCode).toBe(413);
+
+    await app.close();
+  });
+});
+
 describe("Google Play verification API", () => {
   it("rejects an unknown product", async () => {
     const verifier = {} as GooglePlayVerifier;
