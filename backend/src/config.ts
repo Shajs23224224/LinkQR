@@ -10,7 +10,7 @@ const schema = z.object({
   LINKQR_AUTH_ENABLED: z.enum(["true", "false"]).default("false"),
   LINKQR_AUTH_SESSION_DAYS: z.coerce.number().int().positive().max(365).default(30),
   LINKQR_SAAS_ENABLED: z.enum(["true", "false"]).default("false"),
-  LINKQR_SAAS_API_KEY: z.string().min(1).optional(),
+  LINKQR_SAAS_API_KEY: z.string().min(32).optional(),
   LINKQR_SAAS_FREE_QR_LIMIT: z.coerce.number().int().positive().default(100),
   LINKQR_SAAS_PRO_QR_LIMIT: z.coerce.number().int().positive().default(10000)
 });
