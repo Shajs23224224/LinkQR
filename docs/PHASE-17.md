@@ -40,6 +40,7 @@ When the cloud rejects a stale mutation, the API returns 409 SYNC_CONFLICT plus 
   - converges local state to the deterministic winner.
 - Network I/O is executed on Dispatchers.IO.
 - Android requests require the INTERNET permission.
+- The authenticated account flow finds the user's first workspace or creates a FREE LinkQR workspace, then runs sync when the session becomes active.
 
 ## Conflict semantics
 
@@ -68,6 +69,6 @@ Still intentionally deferred:
 - vector clocks / full causal history;
 - tombstone garbage collection after all devices acknowledge deletion;
 - delta sync cursors/change feed for very large workspaces;
-- automatic sync scheduling tied to the authentication lifecycle/UI.
+- periodic/background sync scheduling independent of the authentication lifecycle/UI (current implementation syncs when an authenticated session becomes active).
 
 These are separate scaling/operational concerns and should not be implemented by deleting tombstones prematurely.
