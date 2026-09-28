@@ -1,5 +1,6 @@
 import Database from "better-sqlite3";
-import type { SaaSPlan, Workspace, WorkspaceQrRecord } from "./saas.js";
+import type { SaaSPlan, SyncApplyResult, Workspace, WorkspaceQrRecord } from "./saas.js";
+import { compareSyncRecords } from "./saas.js";
 
 export class SaaSStore {
   private readonly db: Database.Database;
@@ -27,12 +28,19 @@ export class SaaSStore {
         foreground_color TEXT NOT NULL,
         background_color TEXT NOT NULL,
         margin_modules INTEGER NOT NULL,
+        version INTEGER NOT NULL DEFAULT 1,
+        device_id TEXT NOT NULL DEFAULT 'legacy-server',
+        deleted INTEGER NOT NULL DEFAULT 0,
+        deleted_at INTEGER,
         PRIMARY KEY (workspace_id, record_id),
         FOREIGN KEY (workspace_id) REFERENCES workspaces(workspace_id)
       );
 
       CREATE INDEX IF NOT EXISTS idx_workspace_qr_created_at
         ON workspace_qr_records(workspace_id, created_at DESC);
+
+      CREATE INDEX IF NOT EXISTS idx_workspace_qr_sync
+        ON workspace_qr_records(workspace_id, version, updated_at);
     `);
 
     const columns = this.db
@@ -50,6 +58,18 @@ export class SaaSStore {
     if (!qrColumns.some((column) => column.name === "updated_at")) {
       this.db.exec("ALTER TABLE workspace_qr_records ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0");
       this.db.exec("UPDATE workspace_qr_records SET updated_at = created_at WHERE updated_at = 0");
+    }
+    if (!qrColumns.some((column) => column.name === "version")) {
+      this.db.exec("ALTER TABLE workspace_qr_records ADD COLUMN version INTEGER NOT NULL DEFAULT 1");
+    }
+    if (!qrColumns.some((column) => column.name === "device_id")) {
+      this.db.exec("ALTER TABLE workspace_qr_records ADD COLUMN device_id TEXT NOT NULL DEFAULT 'legacy-server'");
+    }
+    if (!qrColumns.some((column) => column.name === "deleted")) {
+      this.db.exec("ALTER TABLE workspace_qr_records ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0");
+    }
+    if (!qrColumns.some((column) => column.name === "deleted_at")) {
+      this.db.exec("ALTER TABLE workspace_qr_records ADD COLUMN deleted_at INTEGER");
     }
 
     this.db.exec(`
@@ -138,7 +158,7 @@ export class SaaSStore {
       .prepare(`
         SELECT COUNT(*) AS count
         FROM workspace_qr_records
-        WHERE workspace_id = ?
+        WHERE workspace_id = ? AND deleted = 0
       `)
       .get(workspaceId) as { count: number };
 
@@ -157,50 +177,9 @@ export class SaaSStore {
     return row?.present === 1;
   }
 
-  upsertQrRecord(record: WorkspaceQrRecord): void {
-    this.db
-      .prepare(`
-        INSERT INTO workspace_qr_records
-          (
-            workspace_id,
-            record_id,
-            type,
-            payload,
-            created_at,
-            updated_at,
-            is_favorite,
-            foreground_color,
-            background_color,
-            margin_modules
-          )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(workspace_id, record_id) DO UPDATE SET
-          type = excluded.type,
-          payload = excluded.payload,
-          created_at = excluded.created_at,
-          updated_at = excluded.updated_at,
-          is_favorite = excluded.is_favorite,
-          foreground_color = excluded.foreground_color,
-          background_color = excluded.background_color,
-          margin_modules = excluded.margin_modules
-      `)
-      .run(
-        record.workspaceId,
-        record.recordId,
-        record.type,
-        record.payload,
-        record.createdAt,
-        record.updatedAt,
-        record.isFavorite ? 1 : 0,
-        record.foregroundColor,
-        record.backgroundColor,
-        record.marginModules
-      );
-  }
-
-  listQrRecords(workspaceId: string): WorkspaceQrRecord[] {
-    const rows = this.db
-      .prepare(`
+  getQrRecord(workspaceId: string, recordId: string): WorkspaceQrRecord | null {
+    const row = this.db
+      .prepare(\`
         SELECT
           workspace_id,
           record_id,
@@ -211,25 +190,116 @@ export class SaaSStore {
           is_favorite,
           foreground_color,
           background_color,
-          margin_modules
+          margin_modules,
+          version,
+          device_id,
+          deleted,
+          deleted_at
         FROM workspace_qr_records
-        WHERE workspace_id = ?
-        ORDER BY created_at DESC
-      `)
-      .all(workspaceId) as Array<{
-        workspace_id: string;
-        record_id: string;
-        type: string;
-        payload: string;
-        created_at: number;
-        updated_at: number;
-        is_favorite: number;
-        foreground_color: string;
-        background_color: string;
-        margin_modules: number;
-      }>;
+        WHERE workspace_id = ? AND record_id = ?
+      \`)
+      .get(workspaceId, recordId) as QrRow | undefined;
 
-    return rows.map((row) => ({
+    return row ? this.toQrRecord(row) : null;
+  }
+
+  upsertQrRecord(record: WorkspaceQrRecord): SyncApplyResult {
+    const existing = this.getQrRecord(record.workspaceId, record.recordId);
+
+    if (existing && compareSyncRecords(record, existing) < 0) {
+      return {
+        accepted: false,
+        created: false,
+        updated: false,
+        record: existing
+      };
+    }
+
+    this.db.prepare(\`
+      INSERT INTO workspace_qr_records
+        (
+          workspace_id,
+          record_id,
+          type,
+          payload,
+          created_at,
+          updated_at,
+          is_favorite,
+          foreground_color,
+          background_color,
+          margin_modules,
+          version,
+          device_id,
+          deleted,
+          deleted_at
+        )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(workspace_id, record_id) DO UPDATE SET
+        type = excluded.type,
+        payload = excluded.payload,
+        created_at = excluded.created_at,
+        updated_at = excluded.updated_at,
+        is_favorite = excluded.is_favorite,
+        foreground_color = excluded.foreground_color,
+        background_color = excluded.background_color,
+        margin_modules = excluded.margin_modules,
+        version = excluded.version,
+        device_id = excluded.device_id,
+        deleted = excluded.deleted,
+        deleted_at = excluded.deleted_at
+    \`).run(
+      record.workspaceId,
+      record.recordId,
+      record.type,
+      record.payload,
+      record.createdAt,
+      record.updatedAt,
+      record.isFavorite ? 1 : 0,
+      record.foregroundColor,
+      record.backgroundColor,
+      record.marginModules,
+      record.version,
+      record.deviceId,
+      record.deleted ? 1 : 0,
+      record.deletedAt ?? null
+    );
+
+    return {
+      accepted: true,
+      created: !existing,
+      updated: Boolean(existing),
+      record
+    };
+  }
+
+  listQrRecords(workspaceId: string, includeDeleted = false): WorkspaceQrRecord[] {
+    const rows = this.db.prepare(\`
+      SELECT
+        workspace_id,
+        record_id,
+        type,
+        payload,
+        created_at,
+        updated_at,
+        is_favorite,
+        foreground_color,
+        background_color,
+        margin_modules,
+        version,
+        device_id,
+        deleted,
+        deleted_at
+      FROM workspace_qr_records
+      WHERE workspace_id = ? AND (? = 1 OR deleted = 0)
+      ORDER BY created_at DESC
+    \`).all(workspaceId, includeDeleted ? 1 : 0) as QrRow[];
+
+    return rows.map((row) => this.toQrRecord(row));
+  }
+
+
+  private toQrRecord(row: QrRow): WorkspaceQrRecord {
+    return {
       workspaceId: row.workspace_id,
       recordId: row.record_id,
       type: row.type,
@@ -239,8 +309,12 @@ export class SaaSStore {
       isFavorite: row.is_favorite === 1,
       foregroundColor: row.foreground_color,
       backgroundColor: row.background_color,
-      marginModules: row.margin_modules
-    }));
+      marginModules: row.margin_modules,
+      version: row.version,
+      deviceId: row.device_id,
+      deleted: row.deleted === 1,
+      deletedAt: row.deleted_at
+    };
   }
 
   close(): void {
@@ -262,4 +336,23 @@ export class SaaSStore {
       ownerUserId: row.owner_user_id
     };
   }
+
+type QrRow = {
+  workspace_id: string;
+  record_id: string;
+  type: string;
+  payload: string;
+  created_at: number;
+  updated_at: number;
+  is_favorite: number;
+  foreground_color: string;
+  background_color: string;
+  margin_modules: number;
+  version: number;
+  device_id: string;
+  deleted: number;
+  deleted_at: number | null;
+};
+
+
 }
