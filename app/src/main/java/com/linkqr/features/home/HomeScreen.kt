@@ -24,6 +24,7 @@ fun HomeScreen(
     onFavorites: () -> Unit,
     onScanner: () -> Unit,
     onPro: () -> Unit,
+    onAccount: () -> Unit,
     showAds: Boolean = false,
     showPrivacyOptions: Boolean = false,
     onPrivacyOptions: () -> Unit = {}
@@ -82,6 +83,13 @@ fun HomeScreen(
             Text("LinkQR PRO")
         }
 
+        OutlinedButton(
+            onClick = onAccount,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Cuenta")
+        }
+
         if (showPrivacyOptions) {
             OutlinedButton(
                 onClick = onPrivacyOptions,
@@ -98,7 +106,7 @@ fun HomeScreen(
         }
 
         Text(
-            text = "Phase 13 · Preparación SaaS",
+            text = "Phase 15 · Autenticación Android",
             style = MaterialTheme.typography.labelMedium
         )
     }
