@@ -23,6 +23,7 @@ fun HomeScreen(
     onHistory: () -> Unit,
     onFavorites: () -> Unit,
     onScanner: () -> Unit,
+    onPro: () -> Unit,
     showAds: Boolean = false,
     showPrivacyOptions: Boolean = false,
     onPrivacyOptions: () -> Unit = {}
@@ -74,6 +75,13 @@ fun HomeScreen(
             Text("Escanear QR")
         }
 
+        OutlinedButton(
+            onClick = onPro,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("LinkQR PRO")
+        }
+
         if (showPrivacyOptions) {
             OutlinedButton(
                 onClick = onPrivacyOptions,
@@ -90,7 +98,7 @@ fun HomeScreen(
         }
 
         Text(
-            text = "Phase 8 · Monetización FREE",
+            text = "Phase 9 · PRO Billing",
             style = MaterialTheme.typography.labelMedium
         )
     }
