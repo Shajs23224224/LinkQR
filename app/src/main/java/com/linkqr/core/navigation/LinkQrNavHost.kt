@@ -5,15 +5,18 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.linkqr.data.repository.QrHistoryRepository
 import com.linkqr.domain.model.QrType
 import com.linkqr.features.generator.QrGeneratorScreen
+import com.linkqr.features.history.QrHistoryScreen
 import com.linkqr.features.home.HomeScreen
 import com.linkqr.qr.ZXingQrCodeGenerator
 
 @Composable
 fun LinkQrNavHost(
     navController: NavHostController,
-    qrCodeGenerator: ZXingQrCodeGenerator = ZXingQrCodeGenerator()
+    qrCodeGenerator: ZXingQrCodeGenerator = ZXingQrCodeGenerator(),
+    qrHistoryRepository: QrHistoryRepository
 ) {
     NavHost(
         navController = navController,
@@ -23,6 +26,12 @@ fun LinkQrNavHost(
             HomeScreen(
                 onGenerate = { type ->
                     navController.navigate("generator/" + type.name)
+                },
+                onHistory = {
+                    navController.navigate(Routes.HISTORY)
+                },
+                onFavorites = {
+                    navController.navigate(Routes.FAVORITES)
                 }
             )
         }
@@ -40,19 +49,30 @@ fun LinkQrNavHost(
                 QrGeneratorScreen(
                     type = type,
                     qrCodeGenerator = qrCodeGenerator,
+                    qrHistoryRepository = qrHistoryRepository,
                     onBack = { navController.popBackStack() }
                 )
             }
         }
 
+        composable(Routes.HISTORY) {
+            QrHistoryScreen(
+                repository = qrHistoryRepository,
+                favoritesOnly = false,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.FAVORITES) {
+            QrHistoryScreen(
+                repository = qrHistoryRepository,
+                favoritesOnly = true,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
         composable(Routes.PREVIEW) {
             Text("Preview")
-        }
-        composable(Routes.HISTORY) {
-            Text("History")
-        }
-        composable(Routes.FAVORITES) {
-            Text("Favorites")
         }
         composable(Routes.SCANNER) {
             Text("Scanner")
