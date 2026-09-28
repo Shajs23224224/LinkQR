@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { AuthUser } from "./auth.js";
-import type { AuthStoreLike } from "./authRoutes.js";
+import type { AuthRepository, SaaSRepository } from "./repositoryPorts.js";
 import {
   SaaSConfig,
   WorkspaceCreateSchema,
@@ -13,22 +13,7 @@ import {
   compareSyncRecords
 } from "./saas.js";
 
-export type SaaSStoreLike = {
-  createWorkspace(workspace: Workspace): void;
-  getWorkspace(workspaceId: string): Workspace | null;
-  getWorkspaceForUser(workspaceId: string, userId: string): Workspace | null;
-  listWorkspacesForUser(userId: string): Workspace[];
-  countQrRecords(workspaceId: string): number;
-  hasQrRecord(workspaceId: string, recordId: string): boolean;
-  getQrRecord(workspaceId: string, recordId: string): WorkspaceQrRecord | null;
-  upsertQrRecord(record: WorkspaceQrRecord): SyncApplyResult;
-  listQrRecords(workspaceId: string, includeDeleted?: boolean): WorkspaceQrRecord[];
-  listQrDelta(workspaceId: string, cursor: number, limit: number): SaaSSyncPage;
-}
-
-type Principal =
-  | { kind: "api-key"; user: null }
-  | { kind: "user"; user: AuthUser };
+export type SaaSStoreLike = SaaSRepository;
 
 function unauthorized(reply: FastifyReply) {
   return reply.code(401).send({
@@ -46,7 +31,7 @@ function getBearerToken(request: FastifyRequest): string | null {
 function resolvePrincipal(
   request: FastifyRequest,
   config: SaaSConfig,
-  authStore?: AuthStoreLike
+  authStore?: AuthRepository
 ): Principal | null {
   const providedKey = request.headers["x-linkqr-api-key"];
   const apiKey = Array.isArray(providedKey)
@@ -67,7 +52,7 @@ function resolvePrincipal(
 }
 
 function workspaceForPrincipal(
-  store: SaaSStoreLike,
+  store: SaaSRepository,
   workspaceId: string,
   principal: Principal
 ): Workspace | null {
@@ -78,9 +63,9 @@ function workspaceForPrincipal(
 
 export function registerSaaSRoutes(
   app: FastifyInstance,
-  store: SaaSStoreLike,
+  store: SaaSRepository,
   config: SaaSConfig,
-  authStore?: AuthStoreLike
+  authStore?: AuthRepository
 ): void {
   if (!config.enabled) return;
 
