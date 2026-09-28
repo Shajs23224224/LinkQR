@@ -56,4 +56,12 @@ object LinkQrDatabaseMigrations {
         }
     }
 
+    val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS sync_state (workspaceId TEXT NOT NULL, cursor INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(workspaceId))"
+            )
+        }
+    }
+
 }

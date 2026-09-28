@@ -7,56 +7,104 @@ import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 
+interface SaaSSyncTransport {
+    suspend fun push(record: CloudQrRecord): SyncPushResult
+    suspend fun pull(cursor: Long, limit: Int = 50): SyncPage
+}
+
+data class SyncPage(
+    val cursor: Long,
+    val nextCursor: Long,
+    val hasMore: Boolean,
+    val records: List<CloudQrRecord>
+)
+
 class SaaSSyncClient(
     baseUrl: String,
     private val bearerToken: String,
     private val workspaceId: String
-) {
+) : SaaSSyncTransport {
+
     private val baseUrl = baseUrl.trimEnd('/')
 
-    suspend fun push(record: CloudQrRecord): SyncPushResult = withContext(Dispatchers.IO) {
+    override suspend fun push(record: CloudQrRecord): SyncPushResult = withContext(Dispatchers.IO) {
         val connection = openConnection(
             "$baseUrl/v1/saas/workspaces/$workspaceId/qr",
             "POST"
         )
         execute(connection, record.toJson().toString()) { status, body ->
-            val json = JSONObject(body)
+            val json = body.toJsonObjectOrNull()
+
             when {
-                status in 200..299 ->
+                status in 200..299 && json != null ->
                     SyncPushResult(
                         record = json.getJSONObject("record").toCloudRecord(),
                         conflict = false
                     )
-                status == 409 && json.optString("error") == "SYNC_CONFLICT" ->
+
+                status == 409 && json?.optString("error") == "SYNC_CONFLICT" ->
                     SyncPushResult(
                         record = json.getJSONObject("winner").toCloudRecord(),
                         conflict = true
                     )
-                else -> throw IOException(
-                    "Cloud sync failed ($status): " + json.optString("error", "UNKNOWN_ERROR")
+
+                else -> throw SaaSHttpException(
+                    statusCode = status,
+                    errorCode = json?.optString("error").orEmpty().ifBlank {
+                        "HTTP_$status"
+                    }
                 )
             }
         }
     }
 
-    suspend fun pull(): List<CloudQrRecord> = withContext(Dispatchers.IO) {
+    override suspend fun pull(cursor: Long, limit: Int): SyncPage = withContext(Dispatchers.IO) {
+        require(cursor >= 0) { "cursor must be non-negative" }
+        require(limit in 1..100) { "limit must be between 1 and 100" }
+
         val connection = openConnection(
-            "$baseUrl/v1/saas/workspaces/$workspaceId/qr?includeDeleted=true",
+            "$baseUrl/v1/saas/workspaces/$workspaceId/qr" +
+                "?cursor=$cursor&limit=$limit&includeDeleted=true",
             "GET"
         )
+
         execute(connection, null) { status, body ->
-            if (status !in 200..299) {
-                val json = JSONObject(body)
-                throw IOException(
-                    "Cloud pull failed ($status): " + json.optString("error", "UNKNOWN_ERROR")
+            val json = body.toJsonObjectOrNull()
+
+            if (status !in 200..299 || json == null) {
+                throw SaaSHttpException(
+                    statusCode = status,
+                    errorCode = json?.optString("error").orEmpty().ifBlank {
+                        "HTTP_$status"
+                    }
                 )
             }
-            val records = JSONObject(body).getJSONArray("records")
-            buildList(records.length()) {
-                for (index in 0 until records.length()) {
-                    add(records.getJSONObject(index).toCloudRecord())
+
+            val responseCursor = json.optLong("cursor", cursor)
+            if (responseCursor != cursor) {
+                throw IOException(
+                    "Cloud cursor mismatch. Expected $cursor but received $responseCursor"
+                )
+            }
+
+            val nextCursor = json.optLong("nextCursor", cursor)
+            if (nextCursor < cursor) {
+                throw IOException("Cloud cursor moved backwards")
+            }
+
+            val recordsJson = json.optJSONArray("records")
+            val records = buildList(recordsJson?.length() ?: 0) {
+                for (index in 0 until (recordsJson?.length() ?: 0)) {
+                    add(recordsJson!!.getJSONObject(index).toCloudRecord())
                 }
             }
+
+            SyncPage(
+                cursor = cursor,
+                nextCursor = nextCursor,
+                hasMore = json.optBoolean("hasMore", false),
+                records = records
+            )
         }
     }
 
@@ -113,7 +161,11 @@ class SaaSSyncClient(
             put("version", version)
             put("deviceId", deviceId)
             put("deleted", deleted)
-            if (deletedAt == null) put("deletedAt", JSONObject.NULL) else put("deletedAt", deletedAt)
+            if (deletedAt == null) {
+                put("deletedAt", JSONObject.NULL)
+            } else {
+                put("deletedAt", deletedAt)
+            }
         }
 
     private fun JSONObject.toCloudRecord(): CloudQrRecord =
@@ -133,8 +185,10 @@ class SaaSSyncClient(
             deleted = getBoolean("deleted"),
             deletedAt = if (isNull("deletedAt")) null else getLong("deletedAt")
         )
-}
 
+    private fun String.toJsonObjectOrNull(): JSONObject? =
+        runCatching { JSONObject(this) }.getOrNull()
+}
 
 data class SyncPushResult(
     val record: CloudQrRecord,

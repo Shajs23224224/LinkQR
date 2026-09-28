@@ -17,12 +17,17 @@ class AppContainer(context: Context) {
         .addMigrations(
             LinkQrDatabaseMigrations.MIGRATION_1_2,
             LinkQrDatabaseMigrations.MIGRATION_2_3,
-            LinkQrDatabaseMigrations.MIGRATION_3_4
+            LinkQrDatabaseMigrations.MIGRATION_3_4,
+            LinkQrDatabaseMigrations.MIGRATION_4_5
         )
         .build()
 
     val qrHistoryRepository: QrHistoryRepository =
-        QrHistoryRepository(database.qrRecordDao(), DeviceIdentity(context).id)
+        QrHistoryRepository(
+            dao = database.qrRecordDao(),
+            deviceId = DeviceIdentity(context).id,
+            syncStateDao = database.syncStateDao()
+        )
 
     fun close() {
         database.close()

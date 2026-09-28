@@ -1,5 +1,11 @@
 import Database from "better-sqlite3";
-import type { SaaSPlan, SyncApplyResult, Workspace, WorkspaceQrRecord } from "./saas.js";
+import type {
+  SaaSPlan,
+  SaaSSyncPage,
+  SyncApplyResult,
+  Workspace,
+  WorkspaceQrRecord
+} from "./saas.js";
 import { compareSyncRecords } from "./saas.js";
 
 export class SaaSStore {
@@ -39,6 +45,16 @@ export class SaaSStore {
       CREATE INDEX IF NOT EXISTS idx_workspace_qr_created_at
         ON workspace_qr_records(workspace_id, created_at DESC);
 
+      CREATE TABLE IF NOT EXISTS workspace_qr_change_log (
+        change_seq INTEGER PRIMARY KEY AUTOINCREMENT,
+        workspace_id TEXT NOT NULL,
+        record_id TEXT NOT NULL,
+        changed_at INTEGER NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_workspace_qr_change_workspace_seq
+        ON workspace_qr_change_log(workspace_id, change_seq);
+
     `);
 
     const columns = this.db
@@ -76,6 +92,18 @@ export class SaaSStore {
 
       CREATE INDEX IF NOT EXISTS idx_workspace_qr_sync
         ON workspace_qr_records(workspace_id, version, updated_at);
+    `);
+
+    this.db.exec(`
+      INSERT INTO workspace_qr_change_log (workspace_id, record_id, changed_at)
+      SELECT r.workspace_id, r.record_id, r.updated_at
+      FROM workspace_qr_records r
+      WHERE NOT EXISTS (
+        SELECT 1
+        FROM workspace_qr_change_log c
+        WHERE c.workspace_id = r.workspace_id
+          AND c.record_id = r.record_id
+      )
     `);
   }
 
@@ -207,69 +235,150 @@ export class SaaSStore {
   upsertQrRecord(record: WorkspaceQrRecord): SyncApplyResult {
     const existing = this.getQrRecord(record.workspaceId, record.recordId);
 
-    if (existing && compareSyncRecords(record, existing) < 0) {
-      return {
-        accepted: false,
-        created: false,
-        updated: false,
-        record: existing
-      };
+    if (existing) {
+      const comparison = compareSyncRecords(record, existing);
+
+      if (comparison < 0) {
+        return {
+          accepted: false,
+          created: false,
+          updated: false,
+          record: existing
+        };
+      }
+
+      if (comparison === 0) {
+        return {
+          accepted: true,
+          created: false,
+          updated: false,
+          record: existing
+        };
+      }
     }
 
-    this.db.prepare(`
-      INSERT INTO workspace_qr_records
-        (
-          workspace_id,
-          record_id,
-          type,
-          payload,
-          created_at,
-          updated_at,
-          is_favorite,
-          foreground_color,
-          background_color,
-          margin_modules,
-          version,
-          device_id,
-          deleted,
-          deleted_at
-        )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(workspace_id, record_id) DO UPDATE SET
-        type = excluded.type,
-        payload = excluded.payload,
-        created_at = excluded.created_at,
-        updated_at = excluded.updated_at,
-        is_favorite = excluded.is_favorite,
-        foreground_color = excluded.foreground_color,
-        background_color = excluded.background_color,
-        margin_modules = excluded.margin_modules,
-        version = excluded.version,
-        device_id = excluded.device_id,
-        deleted = excluded.deleted,
-        deleted_at = excluded.deleted_at
-    `).run(
-      record.workspaceId,
-      record.recordId,
-      record.type,
-      record.payload,
-      record.createdAt,
-      record.updatedAt,
-      record.isFavorite ? 1 : 0,
-      record.foregroundColor,
-      record.backgroundColor,
-      record.marginModules,
-      record.version,
-      record.deviceId,
-      record.deleted ? 1 : 0,
-      record.deletedAt ?? null
-    );
+    const apply = this.db.transaction(() => {
+      this.db.prepare(`
+        INSERT INTO workspace_qr_records
+          (
+            workspace_id,
+            record_id,
+            type,
+            payload,
+            created_at,
+            updated_at,
+            is_favorite,
+            foreground_color,
+            background_color,
+            margin_modules,
+            version,
+            device_id,
+            deleted,
+            deleted_at
+          )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(workspace_id, record_id) DO UPDATE SET
+          type = excluded.type,
+          payload = excluded.payload,
+          created_at = excluded.created_at,
+          updated_at = excluded.updated_at,
+          is_favorite = excluded.is_favorite,
+          foreground_color = excluded.foreground_color,
+          background_color = excluded.background_color,
+          margin_modules = excluded.margin_modules,
+          version = excluded.version,
+          device_id = excluded.device_id,
+          deleted = excluded.deleted,
+          deleted_at = excluded.deleted_at
+      `).run(
+        record.workspaceId,
+        record.recordId,
+        record.type,
+        record.payload,
+        record.createdAt,
+        record.updatedAt,
+        record.isFavorite ? 1 : 0,
+        record.foregroundColor,
+        record.backgroundColor,
+        record.marginModules,
+        record.version,
+        record.deviceId,
+        record.deleted ? 1 : 0,
+        record.deletedAt ?? null
+      );
+
+      this.db.prepare(`
+        INSERT INTO workspace_qr_change_log
+          (workspace_id, record_id, changed_at)
+        VALUES (?, ?, ?)
+      `).run(
+        record.workspaceId,
+        record.recordId,
+        record.updatedAt
+      );
+    });
+
+    apply();
 
     return {
       accepted: true,
       created: !existing,
       updated: Boolean(existing),
       record
+    };
+  }
+
+  listQrDelta(workspaceId: string, cursor: number, limit: number): SaaSSyncPage {
+    const rows = this.db.prepare(`
+      WITH latest_changes AS (
+        SELECT record_id, MAX(change_seq) AS change_seq
+        FROM workspace_qr_change_log
+        WHERE workspace_id = ? AND change_seq > ?
+        GROUP BY record_id
+      )
+      SELECT
+        r.workspace_id,
+        r.record_id,
+        r.type,
+        r.payload,
+        r.created_at,
+        r.updated_at,
+        r.is_favorite,
+        r.foreground_color,
+        r.background_color,
+        r.margin_modules,
+        r.version,
+        r.device_id,
+        r.deleted,
+        r.deleted_at,
+        c.change_seq
+      FROM workspace_qr_records r
+      INNER JOIN latest_changes c
+        ON c.record_id = r.record_id
+      WHERE r.workspace_id = ?
+      ORDER BY c.change_seq ASC
+      LIMIT ?
+    `).all(workspaceId, cursor, workspaceId, limit) as QrDeltaRow[];
+
+    const nextCursor = rows.reduce(
+      (maximum, row) => Math.max(maximum, row.change_seq),
+      cursor
+    );
+
+    const hasMore = Boolean(
+      this.db.prepare(`
+        SELECT 1 AS present
+        FROM workspace_qr_change_log
+        WHERE workspace_id = ? AND change_seq > ?
+        LIMIT 1
+      `).get(workspaceId, nextCursor)
+    );
+
+    return {
+      cursor,
+      nextCursor,
+      hasMore,
+      records: rows.map((row) => this.toQrRecord(row))
     };
   }
 
@@ -338,6 +447,10 @@ export class SaaSStore {
     };
 }
 }
+
+type QrDeltaRow = QrRow & {
+  change_seq: number;
+};
 
 type QrRow = {
   workspace_id: string;

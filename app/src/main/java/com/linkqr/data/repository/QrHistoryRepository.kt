@@ -2,6 +2,8 @@ package com.linkqr.data.repository
 
 import com.linkqr.data.local.QrRecordDao
 import com.linkqr.data.local.QrRecordEntity
+import com.linkqr.data.local.SyncStateDao
+import com.linkqr.data.local.SyncStateEntity
 import com.linkqr.data.sync.CloudQrRecord
 import com.linkqr.data.sync.SyncConflictResolver
 import com.linkqr.data.sync.SyncVersion
@@ -16,7 +18,8 @@ import kotlinx.coroutines.flow.map
 
 class QrHistoryRepository(
     private val dao: QrRecordDao,
-    private val deviceId: String = "legacy-device"
+    private val deviceId: String = "legacy-device",
+    private val syncStateDao: SyncStateDao? = null
 ) {
 
     fun observeAll(): Flow<List<QrRecord>> =
@@ -68,8 +71,8 @@ class QrHistoryRepository(
         dao.markAllDeleted(deletedAt = now, updatedAt = now, deviceId = deviceId)
     }
 
-    suspend fun pendingSyncRecords(): List<QrRecordEntity> {
-        val pending = dao.getPendingSync()
+    suspend fun pendingSyncRecords(limit: Int = 50): List<QrRecordEntity> {
+        val pending = dao.getPendingSync(limit)
         return pending.map { record ->
             var normalized = record
 
@@ -117,6 +120,32 @@ class QrHistoryRepository(
             )
         )
         return comparison < 0 || local.syncStatus != "SYNCED"
+    }
+
+    suspend fun getSyncCursor(workspaceId: String): Long =
+        syncStateDao?.getCursor(workspaceId) ?: 0L
+
+    suspend fun applyRemoteBatch(
+        workspaceId: String,
+        remotes: List<CloudQrRecord>,
+        nextCursor: Long
+    ): Int {
+        var applied = 0
+
+        remotes.forEach { remote ->
+            if (applyRemote(remote)) {
+                applied++
+            }
+        }
+
+        syncStateDao?.setCursor(
+            SyncStateEntity(
+                workspaceId = workspaceId,
+                cursor = nextCursor
+            )
+        )
+
+        return applied
     }
 
     fun toCloudRecord(entity: QrRecordEntity): CloudQrRecord =

@@ -15,8 +15,8 @@ interface QrRecordDao {
     @Query("SELECT * FROM qr_records WHERE deletedAt IS NULL AND isFavorite = 1 ORDER BY createdAt DESC")
     fun observeFavorites(): Flow<List<QrRecordEntity>>
 
-    @Query("SELECT * FROM qr_records WHERE syncStatus = 'PENDING' ORDER BY updatedAt ASC")
-    suspend fun getPendingSync(): List<QrRecordEntity>
+    @Query("SELECT * FROM qr_records WHERE syncStatus = 'PENDING' ORDER BY updatedAt ASC LIMIT :limit")
+    suspend fun getPendingSync(limit: Int = 50): List<QrRecordEntity>
 
     @Query("SELECT * FROM qr_records WHERE syncId = :syncId LIMIT 1")
     suspend fun findBySyncId(syncId: String): QrRecordEntity?

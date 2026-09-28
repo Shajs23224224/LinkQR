@@ -87,7 +87,10 @@ class SaaSWorkspaceApi(
                 ?: ""
 
             if (status !in 200..299) {
-                throw IOException("Workspace request failed: $status")
+                val errorCode = runCatching {
+                    JSONObject(response).optString("error")
+                }.getOrNull().orEmpty().ifBlank { "HTTP_$status" }
+                throw SaaSHttpException(status, errorCode)
             }
             return response
         } finally {

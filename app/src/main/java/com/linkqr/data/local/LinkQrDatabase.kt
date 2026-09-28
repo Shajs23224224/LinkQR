@@ -4,8 +4,8 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [QrRecordEntity::class],
-    version = 4,
+    entities = [QrRecordEntity::class, SyncStateEntity::class],
+    version = 5,
     exportSchema = false
 )
 abstract class LinkQrDatabase : RoomDatabase() {

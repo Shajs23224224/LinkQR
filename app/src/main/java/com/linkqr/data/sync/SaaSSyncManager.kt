@@ -20,6 +20,10 @@ class SaaSSyncManager(
             bearerToken = token,
             workspaceId = workspace.id
         )
-        return QrSyncEngine(repository, client).sync()
+        return QrSyncEngine(
+            repository = repository,
+            client = client,
+            workspaceId = workspace.id
+        ).sync()
     }
 }

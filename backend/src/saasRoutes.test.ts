@@ -19,6 +19,8 @@ const authEmailSender = {
 function createFakeSaaSStore(): SaaSStoreLike {
   const workspaces = new Map<string, Workspace>();
   const records = new Map<string, WorkspaceQrRecord>();
+  const changes = new Map<string, Array<{ sequence: number; recordId: string }>>();
+  let nextSequence = 0;
 
   return {
     createWorkspace(workspace) {
@@ -50,15 +52,35 @@ function createFakeSaaSStore(): SaaSStoreLike {
     upsertQrRecord(record) {
       const key = record.workspaceId + ":" + record.recordId;
       const existing = records.get(key);
-      if (existing && compareSyncRecords(record, existing) < 0) {
-        return {
-          accepted: false,
-          created: false,
-          updated: false,
-          record: existing
-        };
+
+      if (existing) {
+        const comparison = compareSyncRecords(record, existing);
+        if (comparison < 0) {
+          return {
+            accepted: false,
+            created: false,
+            updated: false,
+            record: existing
+          };
+        }
+        if (comparison === 0) {
+          return {
+            accepted: true,
+            created: false,
+            updated: false,
+            record: existing
+          };
+        }
       }
+
       records.set(key, record);
+      const workspaceChanges = changes.get(record.workspaceId) ?? [];
+      workspaceChanges.push({
+        sequence: ++nextSequence,
+        recordId: record.recordId
+      });
+      changes.set(record.workspaceId, workspaceChanges);
+
       return {
         accepted: true,
         created: !existing,
@@ -73,6 +95,39 @@ function createFakeSaaSStore(): SaaSStoreLike {
           (includeDeleted || !record.deleted)
         )
         .sort((a, b) => b.createdAt - a.createdAt);
+    },
+    listQrDelta(workspaceId, cursor, limit) {
+      const latest = new Map<string, number>();
+
+      for (const change of changes.get(workspaceId) ?? []) {
+        if (change.sequence > cursor) {
+          latest.set(
+            change.recordId,
+            Math.max(latest.get(change.recordId) ?? 0, change.sequence)
+          );
+        }
+      }
+
+      const rows = [...latest.entries()]
+        .sort((left, right) => left[1] - right[1])
+        .slice(0, limit);
+
+      const nextCursor = rows.reduce(
+        (maximum, [, sequence]) => Math.max(maximum, sequence),
+        cursor
+      );
+
+      const hasMore = (changes.get(workspaceId) ?? [])
+        .some((change) => change.sequence > nextCursor);
+
+      return {
+        cursor,
+        nextCursor,
+        hasMore,
+        records: rows
+          .map(([recordId]) => records.get(workspaceId + ":" + recordId))
+          .filter((record): record is WorkspaceQrRecord => Boolean(record))
+      };
     }
   };
 }
@@ -407,6 +462,86 @@ describe("SaaS workspace API", () => {
 
 
 describe("SaaS sync conflicts and tombstones", () => {
+  it("serves incremental changes with a monotonic cursor", async () => {
+    const app = createApp();
+    const headers = { "x-linkqr-api-key": "test-key" };
+
+    const workspace = (await app.inject({
+      method: "POST",
+      url: "/v1/saas/workspaces",
+      headers,
+      payload: { name: "Delta workspace", plan: "PRO" }
+    })).json().workspace as Workspace;
+
+    const buildPayload = (recordId: string) => ({
+      recordId,
+      type: "TEXT",
+      payload: recordId,
+      createdAt: 100,
+      updatedAt: 100,
+      isFavorite: false,
+      foregroundColor: "#000000",
+      backgroundColor: "#FFFFFF",
+      marginModules: 4,
+      version: 1,
+      deviceId: "device-a",
+      deleted: false,
+      deletedAt: null
+    });
+
+    const first = await app.inject({
+      method: "POST",
+      url: "/v1/saas/workspaces/" + workspace.id + "/qr",
+      headers,
+      payload: buildPayload("qr-1")
+    });
+    const second = await app.inject({
+      method: "POST",
+      url: "/v1/saas/workspaces/" + workspace.id + "/qr",
+      headers,
+      payload: buildPayload("qr-2")
+    });
+
+    expect(first.statusCode).toBe(200);
+    expect(second.statusCode).toBe(200);
+
+    const pageOne = await app.inject({
+      method: "GET",
+      url: "/v1/saas/workspaces/" + workspace.id + "/qr?cursor=0&limit=1",
+      headers
+    });
+
+    expect(pageOne.statusCode).toBe(200);
+    expect(pageOne.json()).toMatchObject({
+      cursor: 0,
+      nextCursor: 1,
+      hasMore: true
+    });
+    expect(pageOne.json().records).toHaveLength(1);
+
+    const pageTwo = await app.inject({
+      method: "GET",
+      url:
+        "/v1/saas/workspaces/" +
+        workspace.id +
+        "/qr?cursor=" +
+        pageOne.json().nextCursor +
+        "&limit=10",
+      headers
+    });
+
+    expect(pageTwo.statusCode).toBe(200);
+    expect(pageTwo.json()).toMatchObject({
+      cursor: 1,
+      nextCursor: 2,
+      hasMore: false
+    });
+    expect(pageTwo.json().records).toHaveLength(1);
+    expect(pageTwo.json().records[0].recordId).toBe("qr-2");
+
+    await app.close();
+  });
+
   it("rejects an older device version and returns the winner", async () => {
     const saasStore = createFakeSaaSStore();
     const app = createApp(saasStore);

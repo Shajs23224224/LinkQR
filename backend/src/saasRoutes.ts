@@ -8,7 +8,8 @@ import {
   WorkspaceQrRecordSchema,
   Workspace,
   WorkspaceQrRecord,
-  SyncApplyResult
+  SyncApplyResult,
+  SaaSSyncPage
 } from "./saas.js";
 
 export type SaaSStoreLike = {
@@ -21,6 +22,7 @@ export type SaaSStoreLike = {
   getQrRecord(workspaceId: string, recordId: string): WorkspaceQrRecord | null;
   upsertQrRecord(record: WorkspaceQrRecord): SyncApplyResult;
   listQrRecords(workspaceId: string, includeDeleted?: boolean): WorkspaceQrRecord[];
+  listQrDelta(workspaceId: string, cursor: number, limit: number): SaaSSyncPage;
 }
 
 type Principal =
@@ -278,7 +280,39 @@ export function registerSaaSRoutes(
         });
       }
 
-      const query = request.query as { includeDeleted?: string };
+      const query = request.query as {
+        includeDeleted?: string;
+        cursor?: string;
+        limit?: string;
+      };
+
+      if (query.cursor !== undefined) {
+        const cursor = Number(query.cursor);
+        const limit = Number(query.limit ?? "50");
+
+        if (
+          !Number.isSafeInteger(cursor) ||
+          cursor < 0 ||
+          !Number.isSafeInteger(limit) ||
+          limit < 1 ||
+          limit > 100
+        ) {
+          return reply.code(400).send({
+            error: "INVALID_SYNC_CURSOR"
+          });
+        }
+
+        const page = store.listQrDelta(workspaceId, cursor, limit);
+
+        return {
+          workspaceId,
+          cursor: page.cursor,
+          nextCursor: page.nextCursor,
+          hasMore: page.hasMore,
+          records: page.records
+        };
+      }
+
       const includeDeleted = query.includeDeleted === "true";
 
       return {
@@ -286,5 +320,5 @@ export function registerSaaSRoutes(
         records: store.listQrRecords(workspaceId, includeDeleted)
       };
     }
-  );
+
 }

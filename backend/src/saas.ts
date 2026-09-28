@@ -46,6 +46,13 @@ export type WorkspaceQrRecord = z.infer<typeof WorkspaceQrRecordSchema> & {
 };
 
 
+export type SaaSSyncPage = {
+  cursor: number;
+  nextCursor: number;
+  hasMore: boolean;
+  records: WorkspaceQrRecord[];
+};
+
 export type SyncApplyResult = {
   accepted: boolean;
   created: boolean;

@@ -2,6 +2,8 @@ package com.linkqr.data.repository
 
 import com.linkqr.data.local.QrRecordDao
 import com.linkqr.data.local.QrRecordEntity
+import com.linkqr.data.local.SyncStateDao
+import com.linkqr.data.local.SyncStateEntity
 import com.linkqr.data.sync.CloudQrRecord
 import com.linkqr.domain.model.QrDesign
 import com.linkqr.domain.model.QrType
@@ -132,6 +134,33 @@ class QrHistoryRepositoryTest {
     }
 
     @Test
+    fun remoteBatchPersistsCursorAfterApplyingRecords() = runBlocking {
+        val dao = FakeQrRecordDao()
+        val cursorDao = FakeSyncStateDao()
+        val repository = QrHistoryRepository(dao, "device-a", cursorDao)
+
+        val remote = CloudQrRecord(
+            workspaceId = "workspace",
+            recordId = "remote-1",
+            type = "TEXT",
+            payload = "remote",
+            createdAt = 100L,
+            updatedAt = 100L,
+            isFavorite = false,
+            foregroundColor = "#000000",
+            backgroundColor = "#FFFFFF",
+            marginModules = 4,
+            version = 1L,
+            deviceId = "device-b",
+            deleted = false,
+            deletedAt = null
+        )
+
+        assertEquals(1, repository.applyRemoteBatch("workspace", listOf(remote), 42L))
+        assertEquals(42L, repository.getSyncCursor("workspace"))
+    }
+
+    @Test
     fun unknownPersistedTypeFallsBackToText() = runBlocking {
         val dao = FakeQrRecordDao()
         val repository = QrHistoryRepository(dao)
@@ -147,6 +176,21 @@ class QrHistoryRepositoryTest {
         )
 
         assertEquals(QrType.TEXT, repository.observeAll().first().single().type)
+    }
+
+    private class FakeSyncStateDao : SyncStateDao {
+        private val cursors = mutableMapOf<String, Long>()
+
+        override suspend fun getCursor(workspaceId: String): Long? =
+            cursors[workspaceId]
+
+        override suspend fun setCursor(state: SyncStateEntity) {
+            cursors[state.workspaceId] = state.cursor
+        }
+
+        override suspend fun clear(workspaceId: String) {
+            cursors.remove(workspaceId)
+        }
     }
 
     private class FakeQrRecordDao : QrRecordDao {
@@ -173,8 +217,8 @@ class QrHistoryRepositoryTest {
             return stored.id
         }
 
-        override suspend fun getPendingSync(): List<QrRecordEntity> =
-            state.value.filter { it.syncStatus == "PENDING" }.sortedBy { it.updatedAt }
+        override suspend fun getPendingSync(limit: Int): List<QrRecordEntity> =
+            state.value.filter { it.syncStatus == "PENDING" }.sortedBy { it.updatedAt }.take(limit)
 
         override suspend fun findBySyncId(syncId: String): QrRecordEntity? =
             state.value.firstOrNull { it.syncId == syncId }
