@@ -162,11 +162,12 @@ export function buildServer(
   });
 
   app.setErrorHandler((error, request, reply) => {
+    const apiError = error as { statusCode?: unknown };
     const statusCode =
-      typeof error.statusCode === "number" &&
-      error.statusCode >= 400 &&
-      error.statusCode < 500
-        ? error.statusCode
+      typeof apiError.statusCode === "number" &&
+      apiError.statusCode >= 400 &&
+      apiError.statusCode < 500
+        ? apiError.statusCode
         : 500;
 
     request.log.error({
