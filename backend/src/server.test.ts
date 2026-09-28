@@ -3,6 +3,7 @@ import { buildServer } from "./server.js";
 import type { GooglePlayVerifier } from "./googlePlay.js";
 import type { PurchaseStore } from "./store.js";
 import type { AuthStoreLike } from "./authRoutes.js";
+import { SqliteApiProtectionStore } from "./apiProtection.js";
 
 const emailSender = {
   send: vi.fn().mockResolvedValue(undefined)
@@ -313,5 +314,148 @@ describe("Google Play verification API", () => {
     expect(store.save).not.toHaveBeenCalled();
 
     await app.close();
+  });
+});
+
+
+describe("API platform robustness", () => {
+  it("adds API version headers and enforces configurable rate limits", async () => {
+    const verifier = {} as GooglePlayVerifier;
+    const store = {} as PurchaseStore;
+    const protection = new SqliteApiProtectionStore(":memory:");
+    const app = buildServer(verifier, store, {
+      ...options,
+      apiProtectionStore: protection,
+      apiRateLimitPerMinute: 1,
+      apiWriteRateLimitPerMinute: 1
+    });
+
+    const first = await app.inject({
+      method: "GET",
+      url: "/v1/unknown"
+    });
+    expect(first.statusCode).toBe(404);
+    expect(first.headers["x-linkqr-api-version"]).toBe("1");
+    expect(first.headers["ratelimit-limit"]).toBe("1");
+
+    const second = await app.inject({
+      method: "GET",
+      url: "/v1/unknown"
+    });
+    expect(second.statusCode).toBe(429);
+    expect(second.json()).toMatchObject({
+      error: "RATE_LIMITED"
+    });
+
+    await app.close();
+    protection.close();
+  });
+
+  it("replays successful idempotent billing verification without repeating the provider call", async () => {
+    const verifier = {
+      verifyOneTimeProduct: vi.fn().mockResolvedValue({
+        purchaseToken: "idempotent-token",
+        productId: "linkqr_pro",
+        purchaseState: 0,
+        acknowledgementState: 1
+      }),
+      acknowledgeOneTimeProduct: vi.fn()
+    } as unknown as GooglePlayVerifier;
+
+    const store = {
+      hasPurchaseToken: vi.fn().mockReturnValue(false),
+      save: vi.fn()
+    } as unknown as PurchaseStore;
+
+    const protection = new SqliteApiProtectionStore(":memory:");
+    const app = buildServer(verifier, store, {
+      ...options,
+      apiProtectionStore: protection
+    });
+
+    const headers = {
+      "idempotency-key": "billing-key-1234"
+    };
+
+    const first = await app.inject({
+      method: "POST",
+      url: "/v1/google-play/verify",
+      headers,
+      payload: {
+        purchaseToken: "idempotent-token",
+        productId: "linkqr_pro"
+      }
+    });
+
+    const second = await app.inject({
+      method: "POST",
+      url: "/v1/google-play/verify",
+      headers,
+      payload: {
+        purchaseToken: "idempotent-token",
+        productId: "linkqr_pro"
+      }
+    });
+
+    expect(first.statusCode).toBe(200);
+    expect(second.statusCode).toBe(200);
+    expect(second.headers["idempotent-replayed"]).toBe("true");
+    expect(verifier.verifyOneTimeProduct).toHaveBeenCalledOnce();
+    expect(store.save).toHaveBeenCalledOnce();
+
+    await app.close();
+    protection.close();
+  });
+
+  it("rejects reusing an idempotency key for a different request", async () => {
+    const verifier = {
+      verifyOneTimeProduct: vi.fn().mockResolvedValue({
+        purchaseToken: "first",
+        productId: "linkqr_pro",
+        purchaseState: 2,
+        acknowledgementState: 0
+      }),
+      acknowledgeOneTimeProduct: vi.fn()
+    } as unknown as GooglePlayVerifier;
+
+    const store = {
+      hasPurchaseToken: vi.fn(),
+      save: vi.fn()
+    } as unknown as PurchaseStore;
+
+    const protection = new SqliteApiProtectionStore(":memory:");
+    const app = buildServer(verifier, store, {
+      ...options,
+      apiProtectionStore: protection
+    });
+
+    const first = await app.inject({
+      method: "POST",
+      url: "/v1/google-play/verify",
+      headers: { "idempotency-key": "billing-key-5678" },
+      payload: {
+        purchaseToken: "first",
+        productId: "linkqr_pro"
+      }
+    });
+
+    const conflict = await app.inject({
+      method: "POST",
+      url: "/v1/google-play/verify",
+      headers: { "idempotency-key": "billing-key-5678" },
+      payload: {
+        purchaseToken: "second",
+        productId: "linkqr_pro"
+      }
+    });
+
+    expect(first.statusCode).toBe(409);
+    expect(conflict.statusCode).toBe(409);
+    expect(conflict.json()).toEqual({
+      error: "IDEMPOTENCY_KEY_REUSED"
+    });
+
+    await app.close();
+    protection.close();
   });
 });
