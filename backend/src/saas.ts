@@ -22,6 +22,7 @@ export const WorkspaceQrRecordSchema = z.object({
   type: z.string().trim().min(1).max(32),
   payload: z.string().min(1).max(2048),
   createdAt: z.number().int().nonnegative(),
+  updatedAt: z.number().int().nonnegative().default(0),
   isFavorite: z.boolean(),
   foregroundColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
   backgroundColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
