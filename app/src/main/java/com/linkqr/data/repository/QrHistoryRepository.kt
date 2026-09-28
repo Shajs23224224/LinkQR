@@ -37,21 +37,27 @@ class QrHistoryRepository(
                 isFavorite = false,
                 foregroundColor = design.foregroundColor,
                 backgroundColor = design.backgroundColor,
-                marginModules = design.marginModules
+                marginModules = design.marginModules,
+                updatedAt = createdAt,
+                syncDirty = true
             )
         )
     }
 
     suspend fun setFavorite(id: Long, favorite: Boolean) {
-        dao.updateFavorite(id, favorite)
+        dao.updateFavorite(id, favorite, System.currentTimeMillis())
     }
 
     suspend fun delete(id: Long) {
-        dao.deleteById(id)
+        val now = System.currentTimeMillis()
+        dao.markDeletedIfSynced(id, now)
+        dao.deleteIfUnsynced(id)
     }
 
     suspend fun deleteAll() {
-        dao.deleteAll()
+        val now = System.currentTimeMillis()
+        dao.markAllSyncedDeleted(now)
+        dao.deleteAllUnsynced()
     }
 
     private fun toDomain(entity: QrRecordEntity): QrRecord =
