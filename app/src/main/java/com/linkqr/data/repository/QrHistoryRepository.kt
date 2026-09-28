@@ -6,18 +6,22 @@ import com.linkqr.domain.model.QrDesign
 import com.linkqr.domain.model.QrRecord
 import com.linkqr.domain.model.QrType
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 class QrHistoryRepository(
     private val dao: QrRecordDao
 ) {
 
     fun observeAll(): Flow<List<QrRecord>> =
-        dao.observeAll().map { records -> records.map(::toDomain) }
+        dao.observeAll()
+            .map { records -> records.map(::toDomain) }
+            .distinctUntilChanged()
 
     fun observeFavorites(): Flow<List<QrRecord>> =
-        dao.observeFavorites().map { records -> records.map(::toDomain) }
+        dao.observeFavorites()
+            .map { records -> records.map(::toDomain) }
+            .distinctUntilChanged()
 
     suspend fun save(
         type: QrType,
