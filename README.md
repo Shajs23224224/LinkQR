@@ -55,6 +55,8 @@ Implement → compile → test → fix → freeze → next phase.
 12. Publication
 13. SaaS preparation
 14. Functional user authentication
+15. Android authentication integration
+16. Optional SaaS synchronization
 
 
 ## Phase 8 — FREE monetization
@@ -207,6 +209,8 @@ Phase 16 connects the authenticated Android account with the existing SaaS works
 
 This phase does not propagate deletions to the cloud and does not implement multi-device version conflict resolution. Those require tombstones/change versions and are planned for a later synchronization phase.
 
+
+
 ## Phase 14 — Autenticación de usuarios funcional
 
 Phase 14 adds the backend identity layer required for the SaaS product.
@@ -238,3 +242,39 @@ Android now includes a functional account screen with registration, login, sessi
 
 
 See `docs/AUTH.md` for the authentication flow and deployment configuration.
+
+
+## Phase 15 — Integración Android de autenticación
+
+Phase 15 connects the Android application to the authenticated backend account system.
+
+### Included
+
+- Login and registration from the Android account screen.
+- Session restoration through the backend current-user endpoint.
+- Logout with server-side session revocation.
+- Session token encrypted locally with Android Keystore.
+- Offline-first behavior preserved: QR generation, history, favorites and scanning do not require an account.
+- Temporary network failures no longer erase a locally stored authentication token.
+
+See `docs/AUTH.md` for the authentication flow.
+
+
+## Phase 16 — Sincronización SaaS opcional
+
+Phase 16 connects the authenticated Android account with the existing SaaS workspace API while preserving the offline-first architecture.
+
+### Included
+
+- Authenticated Android SaaS client using the bearer session token from Phase 15.
+- Automatic creation of a user's first FREE workspace as **Mi LinkQR**.
+- Stable `remoteRecordId` stored in Room for cloud identity.
+- Push of local QR records to the user's workspace.
+- Pull of remote QR records into the local Room history.
+- Manual synchronization from **Mi cuenta → Sincronizar QR**.
+- Android Keystore remains the only local storage mechanism for the authentication token.
+- QR generation, history, favorites and scanning remain independent of network availability.
+
+### Deliberate limits
+
+This phase does not propagate deletions to the cloud and does not implement multi-device version conflict resolution. Those require tombstones/change versions and are planned for a later synchronization phase.
