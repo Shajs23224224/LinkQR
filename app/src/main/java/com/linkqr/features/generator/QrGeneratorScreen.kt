@@ -57,6 +57,7 @@ fun QrGeneratorScreen(
     type: QrType,
     qrCodeGenerator: ZXingQrCodeGenerator,
     qrHistoryRepository: QrHistoryRepository,
+    isPro: Boolean = false,
     onBack: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -119,6 +120,11 @@ fun QrGeneratorScreen(
             currentDesign = design
             qrBitmap = qrCodeGenerator.generate(
                 content = result,
+                sizePx = if (isPro) {
+                    com.linkqr.core.performance.PerformancePolicy.MAX_QR_BITMAP_SIZE_PX
+                } else {
+                    com.linkqr.core.performance.PerformancePolicy.QR_BITMAP_SIZE_PX
+                },
                 design = design
             )
             error = null
@@ -213,6 +219,15 @@ fun QrGeneratorScreen(
         Text(
             text = type.title(),
             style = MaterialTheme.typography.headlineSmall
+        )
+
+        Text(
+            text = if (isPro) {
+                "PRO · exportación HD 1536 px"
+            } else {
+                "FREE · exportación 768 px"
+            },
+            style = MaterialTheme.typography.labelMedium
         )
 
         when (type) {
