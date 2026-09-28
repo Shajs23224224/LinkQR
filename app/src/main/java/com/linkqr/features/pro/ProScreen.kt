@@ -74,7 +74,7 @@ fun ProScreen(
             }
         }
 
-        state.purchasePending && !state.isPro -> {
+        if (state.purchasePending && !state.isPro) {
             Text(
                 text = "La compra está pendiente de confirmación de Google Play.",
                 style = MaterialTheme.typography.bodyMedium
