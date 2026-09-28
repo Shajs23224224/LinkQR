@@ -50,3 +50,5 @@ A successful `[signed-release]` run with all signing secrets configured addition
 - Signed release AAB
 - APK signature verification
 
+
+<!-- CI artifact upload conditions use the detect_signing step output. -->
