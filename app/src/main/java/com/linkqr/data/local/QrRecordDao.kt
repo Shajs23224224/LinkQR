@@ -17,6 +17,9 @@ interface QrRecordDao {
     @Query("SELECT * FROM qr_records WHERE syncStatus = 'PENDING' ORDER BY updatedAt ASC")
     suspend fun getPendingSync(): List<QrRecordEntity>
 
+    @Query("UPDATE qr_records SET syncId = :syncId WHERE id = :id")
+    suspend fun updateSyncId(id: Long, syncId: String)
+
     @Query("UPDATE qr_records SET syncStatus = :status WHERE syncId = :syncId")
     suspend fun updateSyncStatus(syncId: String, status: String)
 
