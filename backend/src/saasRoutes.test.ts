@@ -84,6 +84,66 @@ function createApp(saasStore: SaaSStoreLike = createFakeSaaSStore()) {
 }
 
 describe("SaaS workspace API", () => {
+  it("supports registration, login, current-user lookup and logout", async () => {
+    const app = createApp();
+    const password = "x".repeat(8);
+    const register = await app.inject({
+      method: "POST",
+      url: "/v1/saas/auth/register",
+      payload: { name: "Test User", email: "auth@example.com", password }
+    });
+    expect(register.statusCode).toBe(201);
+    const token = register.json().token as string;
+
+    const me = await app.inject({
+      method: "GET",
+      url: "/v1/saas/auth/me",
+      headers: { authorization: "Bearer " + token }
+    });
+    expect(me.statusCode).toBe(200);
+    expect(me.json().user.email).toBe("auth@example.com");
+
+    const login = await app.inject({
+      method: "POST",
+      url: "/v1/saas/auth/login",
+      payload: { email: "auth@example.com", password }
+    });
+    expect(login.statusCode).toBe(200);
+
+    const logout = await app.inject({
+      method: "POST",
+      url: "/v1/saas/auth/logout",
+      headers: { authorization: "Bearer " + token }
+    });
+    expect(logout.statusCode).toBe(200);
+
+    const afterLogout = await app.inject({
+      method: "GET",
+      url: "/v1/saas/auth/me",
+      headers: { authorization: "Bearer " + token }
+    });
+    expect(afterLogout.statusCode).toBe(401);
+    await app.close();
+  });
+
+  it("rejects invalid credentials", async () => {
+    const app = createApp();
+    const password = "x".repeat(8);
+    await app.inject({
+      method: "POST",
+      url: "/v1/saas/auth/register",
+      payload: { name: "Test User", email: "invalid@example.com", password }
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/saas/auth/login",
+      payload: { email: "invalid@example.com", password: "y".repeat(8) }
+    });
+    expect(response.statusCode).toBe(401);
+    expect(response.json().error).toBe("INVALID_CREDENTIALS");
+    await app.close();
+  });
+
   it("keeps SaaS routes disabled by default", async () => {
     const app = buildServer(
       {} as GooglePlayVerifier,
