@@ -55,17 +55,17 @@ class QrHistoryRepository(
     }
 
     suspend fun setFavorite(id: Long, favorite: Boolean) {
-        dao.updateFavorite(id, favorite, System.currentTimeMillis())
+        dao.updateFavorite(id, favorite, System.currentTimeMillis(), deviceId)
     }
 
     suspend fun delete(id: Long) {
         val now = System.currentTimeMillis()
-        dao.markDeleted(id, deletedAt = now, updatedAt = now)
+        dao.markDeleted(id, deletedAt = now, updatedAt = now, deviceId = deviceId)
     }
 
     suspend fun deleteAll() {
         val now = System.currentTimeMillis()
-        dao.markAllDeleted(deletedAt = now, updatedAt = now)
+        dao.markAllDeleted(deletedAt = now, updatedAt = now, deviceId = deviceId)
     }
 
     suspend fun pendingSyncRecords(): List<QrRecordEntity> {
