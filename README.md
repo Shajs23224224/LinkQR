@@ -219,3 +219,19 @@ Android now includes a functional account screen with registration, login, sessi
 
 
 See `docs/AUTH.md` for the authentication flow and deployment configuration.
+
+
+## Phase 16 — Preparación de sincronización offline-first
+
+Phase 16 prepares local QR records and the SaaS contract for future cloud synchronization.
+
+### Included
+
+- Stable client-generated sync IDs.
+- Local `updatedAt` and `syncStatus` metadata.
+- Room 2→3 migration with legacy-record compatibility.
+- Pending-sync DAO support.
+- SaaS persistence of `updatedAt` with backward-compatible backend migration.
+- Deletion propagation and multi-device conflict resolution intentionally deferred to a later tombstone/versioning phase.
+
+See `docs/PHASE-16.md` for the exact scope.
