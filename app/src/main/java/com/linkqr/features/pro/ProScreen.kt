@@ -37,7 +37,16 @@ fun ProScreen(
                 text = "PRO activo",
                 style = MaterialTheme.typography.titleLarge
             )
-            Text("Anuncios desactivados para esta cuenta.")
+
+            Text(
+                text = "Tu modo PRO está habilitado en este dispositivo.",
+                style = MaterialTheme.typography.bodyLarge
+            )
+
+            Text("✓ Sin banner publicitario")
+            Text("✓ Sin anuncios intersticiales")
+            Text("✓ Sin anuncios recompensados obligatorios")
+            Text("✓ Restauración de compra mediante Google Play")
         } else {
             Text(
                 text = "Compra única para desbloquear LinkQR PRO.",
