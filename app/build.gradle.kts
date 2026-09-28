@@ -35,7 +35,7 @@ val releaseSaasBaseUrl = providers.gradleProperty("LINKQR_SAAS_BASE_URL")
     .get()
 
 fun quoteBuildConfigString(value: String): String =
-    "\" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
 android {
     namespace = "com.linkqr"
