@@ -197,20 +197,23 @@ Phase 16 connects the authenticated Android account with the existing SaaS works
 ### Included
 
 - Authenticated Android SaaS client using the bearer session token from Phase 15.
-- Automatic creation of a user's first FREE workspace as **Mi LinkQR**.
-- Stable `remoteRecordId` stored in Room for cloud identity.
-- Push of local QR records to the user's workspace.
-- Pull of remote QR records into the local Room history.
+- Automatic creation of the user's first FREE workspace as **Mi LinkQR**.
+- Stable `remoteRecordId`, `remoteVersion`, `updatedAt` and `syncDirty` state in Room.
+- Push of local changes only when dirty.
+- Pull of active cloud records and tombstones.
+- Remote deletion propagation using tombstones.
+- Optimistic versioning with deterministic last-write-wins conflict handling.
+- Automatic application of the winning remote state after a synchronization conflict.
 - Manual synchronization from **Mi cuenta → Sincronizar QR**.
-- Android Keystore remains the only local storage mechanism for the authentication token.
 - QR generation, history, favorites and scanning remain independent of network availability.
 
-### Deliberate limits
+### Sync safety
 
-This phase does not propagate deletions to the cloud and does not implement multi-device version conflict resolution. Those require tombstones/change versions and are planned for a later synchronization phase.
+A stale device cannot silently overwrite a newer cloud state. Mutations carry their known `baseVersion`; the backend advances a record version for accepted changes and returns the current winning record on `SYNC_CONFLICT`.
 
+Deleted synchronized records remain as tombstones instead of disappearing from the server, preventing offline devices from resurrecting them.
 
-
+See `docs/SYNC.md` for the complete synchronization protocol.
 ## Phase 14 — Autenticación de usuarios funcional
 
 Phase 14 adds the backend identity layer required for the SaaS product.
