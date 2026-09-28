@@ -67,9 +67,10 @@ class QrHistoryRepositoryTest {
     @Test
     fun deleteCreatesTombstoneAndHidesRecord() = runBlocking {
         val dao = FakeQrRecordDao()
-        val repository = QrHistoryRepository(dao, "device-a")
+        val repository = QrHistoryRepository(dao, "device-b")
 
         val id = repository.save(QrType.TEXT, "Hola", 123L)
+        dao.updateDeviceId(id, "device-a")
         repository.delete(id)
 
         assertTrue(repository.observeAll().first().isEmpty())
@@ -77,6 +78,7 @@ class QrHistoryRepositoryTest {
         val pending = repository.pendingSyncRecords().single()
         assertTrue(pending.deletedAt != null)
         assertEquals(2L, pending.version)
+        assertEquals("device-b", pending.deviceId)
         assertEquals("PENDING", pending.syncStatus)
     }
 
@@ -190,13 +192,14 @@ class QrHistoryRepositoryTest {
             }
         }
 
-        override suspend fun updateFavorite(id: Long, favorite: Boolean, updatedAt: Long) {
+        override suspend fun updateFavorite(id: Long, favorite: Boolean, updatedAt: Long, deviceId: String) {
             state.value = state.value.map {
                 if (it.id == id && it.deletedAt == null) {
                     it.copy(
                         isFavorite = favorite,
                         updatedAt = updatedAt,
                         version = it.version + 1,
+                        deviceId = deviceId,
                         syncStatus = "PENDING"
                     )
                 } else {
@@ -205,13 +208,14 @@ class QrHistoryRepositoryTest {
             }
         }
 
-        override suspend fun markDeleted(id: Long, deletedAt: Long, updatedAt: Long) {
+        override suspend fun markDeleted(id: Long, deletedAt: Long, updatedAt: Long, deviceId: String) {
             state.value = state.value.map {
                 if (it.id == id && it.deletedAt == null) {
                     it.copy(
                         deletedAt = deletedAt,
                         updatedAt = updatedAt,
                         version = it.version + 1,
+                        deviceId = deviceId,
                         syncStatus = "PENDING"
                     )
                 } else {
@@ -220,13 +224,14 @@ class QrHistoryRepositoryTest {
             }
         }
 
-        override suspend fun markAllDeleted(deletedAt: Long, updatedAt: Long) {
+        override suspend fun markAllDeleted(deletedAt: Long, updatedAt: Long, deviceId: String) {
             state.value = state.value.map {
                 if (it.deletedAt == null) {
                     it.copy(
                         deletedAt = deletedAt,
                         updatedAt = updatedAt,
                         version = it.version + 1,
+                        deviceId = deviceId,
                         syncStatus = "PENDING"
                     )
                 } else {
