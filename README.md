@@ -166,3 +166,22 @@ LinkQR is prepared for the publication workflow with version **1.0.0**, a launch
 - Publication documentation in `docs/PUBLICATION.md`.
 
 The CI release artifact is unsigned by design. Production signing credentials must remain outside the repository.
+
+
+## Phase 13 — Preparación SaaS
+
+Phase 13 adds a backend foundation for a future cloud version of LinkQR without making the Android app dependent on the Internet.
+
+### Included
+
+- Multi-tenant workspaces.
+- QR records scoped by workspace.
+- FREE/PRO plan model and configurable record quotas.
+- Versioned SaaS API under /v1/saas.
+- Server-side API-key protection.
+- SaaS feature flag disabled by default.
+- Dedicated SQLite persistence for workspace and synced QR data.
+- Automated tests for authentication, workspace creation, QR synchronization and quota enforcement.
+- Architecture and security notes in docs/SAAS.md.
+
+The Android application remains offline-first. The SaaS API is preparation for a future authenticated cloud product and is not yet exposed as an end-user account system.
