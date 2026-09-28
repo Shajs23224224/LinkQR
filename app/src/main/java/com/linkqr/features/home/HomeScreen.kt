@@ -27,6 +27,8 @@ fun HomeScreen(
     onAccount: () -> Unit,
     accountEmail: String? = null,
     showAds: Boolean = false,
+    showRewardedAdOption: Boolean = false,
+    onWatchRewardedAd: () -> Unit = {},
     showPrivacyOptions: Boolean = false,
     onPrivacyOptions: () -> Unit = {}
 ) {
@@ -94,6 +96,15 @@ fun HomeScreen(
             Text("LinkQR PRO")
         }
 
+        if (showRewardedAdOption) {
+            OutlinedButton(
+                onClick = onWatchRewardedAd,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Ver anuncio · 30 min sin anuncios")
+            }
+        }
+
         if (showPrivacyOptions) {
             OutlinedButton(
                 onClick = onPrivacyOptions,
@@ -110,7 +121,7 @@ fun HomeScreen(
         }
 
         Text(
-            text = "Phase 14 · Autenticación de usuarios",
+            text = "Monetización · AdMob",
             style = MaterialTheme.typography.labelMedium
         )
     }
