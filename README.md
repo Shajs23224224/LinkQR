@@ -84,3 +84,39 @@ For a production release, provide your own IDs through Gradle properties:
 ```
 
 Never click your own production ads during testing. Replace the sample IDs only when the AdMob app and ad unit are configured for release.
+
+
+## Phase 9 — PRO Billing
+
+Phase 9 integrates Google Play Billing for a non-consumable LinkQR PRO product.
+
+### Included
+
+- Google Play Billing Library 9.1.0.
+- Product ID: `linkqr_pro`.
+- One-time PRO purchase flow using `ProductDetails`.
+- Purchase restoration through `queryPurchasesAsync`.
+- Pending purchase handling; PRO is not granted until Google Play reports the purchase as `PURCHASED`.
+- Purchase acknowledgement for non-consumable PRO purchases.
+- Cached local PRO entitlement for continuity while temporarily offline.
+- Online Google Play purchase state remains authoritative and can revoke the cached entitlement when a successful purchase query no longer reports PRO.
+- PRO automatically suppresses FREE banner ads.
+- Dedicated LinkQR PRO screen with localized Play price and restore action.
+
+### Google Play Console setup
+
+Before a real purchase can be made, create a **one-time product** in the LinkQR app in Play Console with this exact product ID:
+
+```text
+linkqr_pro
+```
+
+Configure it as a non-consumable purchase that grants the permanent PRO benefit.
+
+The application currently does not contain a hard-coded price. The price shown to the user comes from Google Play through `ProductDetails`, so currency and localized formatting remain Play-managed.
+
+### Testing
+
+Use a Play Console testing track and licensed tester account to exercise the complete purchase lifecycle. Do not replace the product ID with a local placeholder: the app intentionally requires the real Play Console product ID `linkqr_pro`.
+
+The local entitlement cache is a convenience for temporary offline continuity; it is not a substitute for server-side purchase verification for a security-sensitive production service.
