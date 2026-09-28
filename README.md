@@ -120,3 +120,16 @@ The application currently does not contain a hard-coded price. The price shown t
 Use a Play Console testing track and licensed tester account to exercise the complete purchase lifecycle. Do not replace the product ID with a local placeholder: the app intentionally requires the real Play Console product ID `linkqr_pro`.
 
 The local entitlement cache is a convenience for temporary offline continuity; it is not a substitute for server-side purchase verification for a security-sensitive production service.
+
+
+## Phase 10 — Optimization
+
+Phase 10 keeps LinkQR lightweight for low-end Android devices and reduces avoidable allocation/recomposition work.
+
+### Included
+
+- Centralized QR bitmap sizing policy with a 768 px default.
+- Batched QR bitmap rendering through `Bitmap.setPixels` instead of calling `Bitmap.setPixel` for every pixel.
+- History flows use `distinctUntilChanged()` after domain mapping to avoid redundant UI emissions.
+- Performance-focused unit coverage for the QR bitmap renderer.
+- Core QR generation remains synchronous from the UI's current architecture; no network dependency was introduced into generation.
