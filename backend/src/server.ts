@@ -107,58 +107,74 @@ export function buildServer(
           });
         }
 
-        const critical =
-          request.method === "POST" &&
-          (path === "/v1/saas/workspaces" ||
-            path === "/v1/google-play/verify");
-        const idempotencyKey = request.headers["idempotency-key"];
-
-        if (critical && idempotencyKey) {
-          const key = Array.isArray(idempotencyKey)
-            ? idempotencyKey[0]
-            : idempotencyKey;
-
-          if (!/^[A-Za-z0-9._~-]{8,128}$/.test(key)) {
-            return reply.code(400).send({
-              error: "INVALID_IDEMPOTENCY_KEY"
-            });
-          }
-
-          const scope = request.method + ":" + path + ":" + principal;
-          const requestHash = hashRequestBody(request.body);
-          const claim = options.apiProtectionStore.claimIdempotency(
-            key,
-            scope,
-            requestHash,
-            options.apiIdempotencyTtlMs ?? 24 * 60 * 60 * 1000
-          );
-
-          if (claim.kind === "conflict") {
-            return reply.code(409).send({
-              error: "IDEMPOTENCY_KEY_REUSED"
-            });
-          }
-
-          if (claim.kind === "in_progress") {
-            return reply.code(409).send({
-              error: "IDEMPOTENCY_IN_PROGRESS"
-            });
-          }
-
-          if (claim.kind === "replay") {
-            if (claim.record.contentType) {
-              reply.header("Content-Type", claim.record.contentType);
-            }
-            reply.header("Idempotent-Replayed", "true");
-            return reply.code(claim.record.statusCode).send(claim.record.responseBody);
-          }
-
-          idempotencyState.set(request, { key, scope, requestHash });
-        }
       }
     }
 
     reply.header("X-Request-ID", request.id);
+  });
+
+  app.addHook("preValidation", async (request, reply) => {
+    if (!options.apiProtectionStore || request.method !== "POST" || !request.url.startsWith("/v1/")) {
+      return;
+    }
+
+    const path = request.url.split("?")[0];
+    const critical =
+      path === "/v1/saas/workspaces" ||
+      path === "/v1/google-play/verify";
+    const idempotencyHeader = request.headers["idempotency-key"];
+
+    if (!critical || !idempotencyHeader) {
+      return;
+    }
+
+    const key = Array.isArray(idempotencyHeader)
+      ? idempotencyHeader[0]
+      : idempotencyHeader;
+
+    if (!/^[A-Za-z0-9._~-]{8,128}$/.test(key)) {
+      return reply.code(400).send({
+        error: "INVALID_IDEMPOTENCY_KEY"
+      });
+    }
+
+    const principal = hashPrincipal(
+      request.headers.authorization,
+      Array.isArray(request.headers["x-linkqr-api-key"])
+        ? request.headers["x-linkqr-api-key"][0]
+        : request.headers["x-linkqr-api-key"],
+      request.ip
+    );
+    const scope = request.method + ":" + path + ":" + principal;
+    const requestHash = hashRequestBody(request.body);
+    const claim = options.apiProtectionStore.claimIdempotency(
+      key,
+      scope,
+      requestHash,
+      options.apiIdempotencyTtlMs ?? 24 * 60 * 60 * 1000
+    );
+
+    if (claim.kind === "conflict") {
+      return reply.code(409).send({
+        error: "IDEMPOTENCY_KEY_REUSED"
+      });
+    }
+
+    if (claim.kind === "in_progress") {
+      return reply.code(409).send({
+        error: "IDEMPOTENCY_IN_PROGRESS"
+      });
+    }
+
+    if (claim.kind === "replay") {
+      if (claim.record.contentType) {
+        reply.header("Content-Type", claim.record.contentType);
+      }
+      reply.header("Idempotent-Replayed", "true");
+      return reply.code(claim.record.statusCode).send(claim.record.responseBody);
+    }
+
+    idempotencyState.set(request, { key, scope, requestHash });
   });
 
   app.setErrorHandler((error, request, reply) => {
