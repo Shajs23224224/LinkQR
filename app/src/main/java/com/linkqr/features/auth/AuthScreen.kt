@@ -30,6 +30,7 @@ fun AuthScreen(
     onLogin: (String, String) -> Unit,
     onRegister: (String, String, String?) -> Unit,
     onResendVerification: (String) -> Unit,
+    onPasswordResetRequest: (String) -> Unit,
     onBack: () -> Unit
 ) {
     var registerMode by remember { mutableStateOf(false) }
@@ -48,7 +49,6 @@ fun AuthScreen(
                 confirmation = ""
                 localError = null
             }
-            is AuthState.Message -> localError = null
             else -> Unit
         }
     }
@@ -154,9 +154,7 @@ fun AuthScreen(
             CircularProgressIndicator()
         } else if (verificationRequired) {
             Button(
-                onClick = {
-                    onResendVerification(email)
-                },
+                onClick = { onResendVerification(email) },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Reenviar correo de verificación")
@@ -164,7 +162,7 @@ fun AuthScreen(
 
             OutlinedButton(
                 onClick = {
-                    localError = null
+                    localError = "Después de verificar el correo, inicia sesión con tu contraseña."
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -207,6 +205,22 @@ fun AuthScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(if (registerMode) "Crear cuenta" else "Entrar")
+            }
+
+            if (!registerMode) {
+                OutlinedButton(
+                    onClick = {
+                        if (email.isBlank()) {
+                            localError = "Escribe tu correo para solicitar la recuperación."
+                        } else {
+                            localError = null
+                            onPasswordResetRequest(email)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Olvidé mi contraseña")
+                }
             }
 
             OutlinedButton(
