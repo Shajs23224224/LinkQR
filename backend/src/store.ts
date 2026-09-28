@@ -1,11 +1,11 @@
-import type Database from "better-sqlite3";
+import Database from "better-sqlite3";
 import type { PurchaseRepository, PurchaseRecord } from "./repositoryPorts.js";
 import { openSqliteDatabase, optimizeSqliteDatabase } from "./sqlite.js";
 
 export type { PurchaseRecord } from "./repositoryPorts.js";
 
 export class PurchaseStore implements PurchaseRepository {
-  private readonly db: Database;
+  private readonly db: Database.Database;
 
   constructor(path: string) {
     this.db = openSqliteDatabase(path);
