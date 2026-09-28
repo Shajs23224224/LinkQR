@@ -179,7 +179,7 @@ export function registerSaaSRoutes(app: FastifyInstance, store: SaaSStoreLike, c
     const workspace: Workspace = {
       id: randomUUID(),
       name: parsed.data.name,
-      plan: parsed.data.plan,
+      plan: user ? "FREE" : parsed.data.plan,
       createdAt: Date.now(),
       ownerUserId: user?.id ?? null
     };
