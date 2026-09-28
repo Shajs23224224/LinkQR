@@ -23,4 +23,8 @@ class AppContainer(context: Context) {
 
     val qrHistoryRepository: QrHistoryRepository =
         QrHistoryRepository(database.qrRecordDao(), DeviceIdentity(context).id)
+
+    fun close() {
+        database.close()
+    }
 }
