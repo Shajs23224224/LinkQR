@@ -35,7 +35,16 @@ export function buildServer(
   store: Pick<PurchaseStore, "hasPurchaseToken" | "save">,
   options: BillingServerOptions
 ) {
-  const app = Fastify({ logger: true });
+  const app = Fastify({
+    logger: true,
+    bodyLimit: 64 * 1024
+  });
+
+  app.addHook("onSend", async (_request, reply, payload) => {
+    reply.header("Cache-Control", "no-store");
+    reply.header("X-Content-Type-Options", "nosniff");
+    return payload;
+  });
 
   if (options.auth?.enabled && options.authStore) {
     registerAuthRoutes(app, options.authStore, options.auth);
@@ -52,6 +61,11 @@ export function buildServer(
 
   app.get("/health", async () => ({
     ok: true,
+    service: "linkqr-billing-backend"
+  }));
+
+  app.get("/ready", async () => ({
+    ready: true,
     service: "linkqr-billing-backend"
   }));
 
