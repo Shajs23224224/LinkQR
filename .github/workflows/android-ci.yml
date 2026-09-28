@@ -31,6 +31,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Detect signed release mode
+        shell: bash
+        run: |
+          if git log -1 --pretty=%B | grep -Fq '[signed-release]'; then
+            echo "LINKQR_SIGNED_RELEASE=true" >> "$GITHUB_ENV"
+          else
+            echo "LINKQR_SIGNED_RELEASE=false" >> "$GITHUB_ENV"
+          fi
+
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
@@ -49,27 +58,25 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x gradlew
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug --stacktrace
-
-      - name: Run unit tests
-        run: ./gradlew test --stacktrace
-
       - name: Restore release keystore
-        if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[signed-release]') }}
-        env:
-          LINKQR_KEYSTORE_B64: ${{ secrets.LINKQR_KEYSTORE_B64 }}
         shell: bash
         run: |
+          if [ "$LINKQR_SIGNED_RELEASE" != "true" ]; then
+            exit 0
+          fi
           set -euo pipefail
-          test -n "$LINKQR_KEYSTORE_B64"
+          test -n "${LINKQR_KEYSTORE_B64:-}"
           printf '%s' "$LINKQR_KEYSTORE_B64" | base64 --decode > "$LINKQR_KEYSTORE_FILE"
           test -s "$LINKQR_KEYSTORE_FILE"
+        env:
+          LINKQR_KEYSTORE_B64: ${{ secrets.LINKQR_KEYSTORE_B64 }}
 
       - name: Validate signing credentials
-        if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[signed-release]') }}
         shell: bash
         run: |
+          if [ "$LINKQR_SIGNED_RELEASE" != "true" ]; then
+            exit 0
+          fi
           set -euo pipefail
           test -n "$LINKQR_KEYSTORE_PASSWORD"
           test -n "$LINKQR_KEY_ALIAS"
@@ -80,17 +87,28 @@ jobs:
             -alias "$LINKQR_KEY_ALIAS" \
             >/dev/null
 
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Run unit tests
+        run: ./gradlew test --stacktrace
+
       - name: Build release APK
         run: ./gradlew assembleRelease --stacktrace
 
-      - name: Build signed AAB
-        if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[signed-release]') }}
-        run: ./gradlew bundleRelease --stacktrace
-
-      - name: Verify signed APK + AAB
-        if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[signed-release]') }}
+      - name: Build release AAB when signed
         shell: bash
         run: |
+          if [ "$LINKQR_SIGNED_RELEASE" = "true" ]; then
+            ./gradlew bundleRelease --stacktrace
+          fi
+
+      - name: Verify signed release
+        shell: bash
+        run: |
+          if [ "$LINKQR_SIGNED_RELEASE" != "true" ]; then
+            exit 0
+          fi
           set -euo pipefail
           APK="app/build/outputs/apk/release/app-release.apk"
           AAB="app/build/outputs/bundle/release/app-release.aab"
@@ -118,28 +136,14 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
-      - name: Upload unsigned release APK
-        if: ${{ success() && !(github.event_name == 'push' && contains(github.event.head_commit.message, '[signed-release]')) }}
+      - name: Upload release APK/AAB
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: LinkQR-release-unsigned
-          path: app/build/outputs/apk/release/*.apk
-          if-no-files-found: error
-
-      - name: Upload signed release APK
-        if: ${{ success() && github.event_name == 'push' && contains(github.event.head_commit.message, '[signed-release]') }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: LinkQR-release-signed
-          path: app/build/outputs/apk/release/app-release.apk
-          if-no-files-found: error
-
-      - name: Upload signed release AAB
-        if: ${{ success() && github.event_name == 'push' && contains(github.event.head_commit.message, '[signed-release]') }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: LinkQR-release-aab-signed
-          path: app/build/outputs/bundle/release/app-release.aab
+          name: LinkQR-release
+          path: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
 
       - name: Cleanup release keystore
