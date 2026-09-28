@@ -5,9 +5,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -16,12 +18,14 @@ import com.linkqr.domain.model.QrType
 
 @Composable
 fun HomeScreen(
-    onGenerate: (QrType) -> Unit
+    onGenerate: (QrType) -> Unit,
+    onHistory: () -> Unit,
+    onFavorites: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(androidx.compose.foundation.rememberScrollState())
+            .verticalScroll(rememberScrollState())
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -29,8 +33,9 @@ fun HomeScreen(
             text = "LinkQR",
             style = MaterialTheme.typography.headlineMedium
         )
+
         Text(
-            text = "Genera códigos QR rápidamente y sin conexión.",
+            text = "Genera, guarda y administra tus códigos QR sin conexión.",
             style = MaterialTheme.typography.bodyLarge
         )
 
@@ -43,8 +48,22 @@ fun HomeScreen(
             }
         }
 
+        OutlinedButton(
+            onClick = onHistory,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Historial")
+        }
+
+        OutlinedButton(
+            onClick = onFavorites,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Favoritos")
+        }
+
         Text(
-            text = "Phase 3 · 7 tipos de QR",
+            text = "Phase 4 · Persistencia local",
             style = MaterialTheme.typography.labelMedium
         )
     }
