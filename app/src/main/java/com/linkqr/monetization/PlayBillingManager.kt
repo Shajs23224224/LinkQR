@@ -193,10 +193,12 @@ class PlayBillingManager(
             )
         }
 
-        val productParams = BillingFlowParams.ProductDetailsParams.newBuilder()
+        val productParamsBuilder = BillingFlowParams.ProductDetailsParams.newBuilder()
             .setProductDetails(details)
-            .setOfferToken(offer.offerToken)
-            .build()
+
+        offer.offerToken?.let(productParamsBuilder::setOfferToken)
+
+        val productParams = productParamsBuilder.build()
 
         val params = BillingFlowParams.newBuilder()
             .setProductDetailsParamsList(listOf(productParams))
