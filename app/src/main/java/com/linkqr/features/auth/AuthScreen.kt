@@ -39,6 +39,7 @@ fun AuthScreen(
     var password by remember { mutableStateOf("") }
     var confirmation by remember { mutableStateOf("") }
     var localError by remember { mutableStateOf<String?>(null) }
+    var showVerificationNotice by remember { mutableStateOf(false) }
 
     LaunchedEffect(state) {
         when (val current = state) {
@@ -48,6 +49,7 @@ fun AuthScreen(
                 password = ""
                 confirmation = ""
                 localError = null
+                showVerificationNotice = true
             }
             else -> Unit
         }
@@ -56,7 +58,8 @@ fun AuthScreen(
     val isLoading = state is AuthState.Loading
     val error = localError ?: (state as? AuthState.Error)?.message
     val message = (state as? AuthState.Message)?.message
-    val verificationRequired = state is AuthState.VerificationRequired
+    val verificationRequired =
+        state is AuthState.VerificationRequired && showVerificationNotice
 
     Column(
         modifier = Modifier
@@ -162,21 +165,14 @@ fun AuthScreen(
 
             OutlinedButton(
                 onClick = {
-                    localError = "Después de verificar el correo, inicia sesión con tu contraseña."
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Ya verifiqué mi correo")
-            }
-
-            OutlinedButton(
-                onClick = {
+                    showVerificationNotice = false
                     registerMode = false
                     localError = null
+                    password = ""
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Volver a iniciar sesión")
+                Text("Iniciar sesión")
             }
         } else {
             Button(
