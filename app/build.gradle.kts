@@ -21,7 +21,7 @@ android {
         minSdk = 24
         targetSdk = 37
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "1.0.0"
 
         manifestPlaceholders["ADMOB_APP_ID"] = admobAppId
     }
@@ -36,6 +36,9 @@ android {
         }
 
         release {
+            isMinifyEnabled = false
+            isShrinkResources = false
+
             buildConfigField(
                 "String",
                 "ADMOB_BANNER_AD_UNIT_ID",
