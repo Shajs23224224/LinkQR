@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { hashPassword } from "./auth.js";
 import { buildServer } from "./server.js";
 import type { GooglePlayVerifier } from "./googlePlay.js";
 import type { PurchaseStore } from "./store.js";
@@ -13,8 +14,33 @@ const baseOptions = {
 function createFakeSaaSStore(): SaaSStoreLike {
   const workspaces = new Map<string, Workspace>();
   const records = new Map<string, WorkspaceQrRecord>();
+  const users = new Map<string, import("./saas.js").User>();
+  const sessions = new Map<string, { userId: string; expiresAt: number }>();
 
   return {
+    createUser(user) {
+      if ([...users.values()].some((candidate) => candidate.email === user.email)) {
+        throw new Error("duplicate");
+      }
+      users.set(user.id, user);
+    },
+    getUserByEmail(email) {
+      return [...users.values()].find((user) => user.email === email) ?? null;
+    },
+    getUser(userId) {
+      return users.get(userId) ?? null;
+    },
+    createSession(token, userId, expiresAt) {
+      sessions.set(token, { userId, expiresAt });
+    },
+    getSessionUser(token) {
+      const session = sessions.get(token);
+      if (!session || session.expiresAt <= Date.now()) return null;
+      return users.get(session.userId) ?? null;
+    },
+    deleteSession(token) {
+      sessions.delete(token);
+    },
     createWorkspace(workspace) {
       workspaces.set(workspace.id, workspace);
     },
