@@ -33,6 +33,7 @@ class QrHistoryRepositoryTest {
         assertEquals(QrType.URL, records.single().type)
         assertEquals("https://example.com", records.single().payload)
         assertEquals(123L, records.single().createdAt)
+        assertTrue(records.single().id > 0)
         assertTrue(!records.single().isFavorite)
     }
 
@@ -121,9 +122,18 @@ class QrHistoryRepositoryTest {
             return stored.id
         }
 
-        override suspend fun updateFavorite(id: Long, favorite: Boolean) {
+        override suspend fun getPendingSync(): List<QrRecordEntity> =
+            state.value.filter { it.syncStatus == "PENDING" }
+
+        override suspend fun updateSyncStatus(syncId: String, status: String) {
             state.value = state.value.map {
-                if (it.id == id) it.copy(isFavorite = favorite) else it
+                if (it.syncId == syncId) it.copy(syncStatus = status) else it
+            }
+        }
+
+        override suspend fun updateFavorite(id: Long, favorite: Boolean, updatedAt: Long) {
+            state.value = state.value.map {
+                if (it.id == id) it.copy(isFavorite = favorite, updatedAt = updatedAt, syncStatus = "PENDING") else it
             }
         }
 
