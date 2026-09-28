@@ -1,7 +1,9 @@
 package com.linkqr.monetization
 
-interface EntitlementManager {
-    val plan: Plan
+import kotlinx.coroutines.flow.StateFlow
 
-    fun shouldShowAds(): Boolean = plan == Plan.FREE
+interface EntitlementManager {
+    val plan: StateFlow<Plan>
+
+    fun shouldShowAds(): Boolean = plan.value == Plan.FREE
 }
