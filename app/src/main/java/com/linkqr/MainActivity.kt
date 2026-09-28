@@ -8,6 +8,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.navigation.compose.rememberNavController
 import com.linkqr.core.di.AppContainer
 import com.linkqr.core.navigation.LinkQrNavHost
@@ -39,6 +40,7 @@ class MainActivity : ComponentActivity() {
             val navController = rememberNavController()
             val entitlementPlan by entitlementManager.plan.collectAsState()
             val billingState by billingManager.state.collectAsState()
+            val authSession = remember { mutableStateOf(appContainer.authRepository.localSession()) }
 
             MaterialTheme {
                 Surface {
@@ -62,6 +64,11 @@ class MainActivity : ComponentActivity() {
                         },
                         onRestorePro = {
                             billingManager.refreshPurchases()
+                        },
+                        authRepository = appContainer.authRepository,
+                        authSession = authSession.value,
+                        onAuthSessionChanged = { session ->
+                            authSession.value = session
                         }
                     )
                 }
