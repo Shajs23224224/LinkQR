@@ -219,3 +219,24 @@ Android now includes a functional account screen with registration, login, sessi
 
 
 See `docs/AUTH.md` for the authentication flow and deployment configuration.
+
+
+## Phase 15 — Autenticación Android
+
+La aplicación Android ya consume la identidad del backend sin convertir la generación de QR en una función dependiente de Internet.
+
+### Incluido
+
+- Pantalla de Cuenta con registro e inicio de sesión.
+- Sesión persistida localmente y cifrada con Android Keystore + AES-GCM.
+- Cliente HTTP ligero basado en HttpURLConnection.
+- Logout y detección de sesiones inválidas.
+- Una sesión local no bloquea la generación de QR, historial ni escáner offline.
+- URL del backend configurable mediante la propiedad de Gradle LINKQR_API_BASE_URL.
+- No se embeben credenciales administrativas del SaaS en el APK.
+
+Ejemplo de build contra un backend HTTPS:
+
+```bash
+./gradlew assembleDebug -PLINKQR_API_BASE_URL=https://tu-backend.example.com
+```
