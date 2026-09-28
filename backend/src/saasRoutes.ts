@@ -320,5 +320,6 @@ export function registerSaaSRoutes(
         records: store.listQrRecords(workspaceId, includeDeleted)
       };
     }
-
+  );
 }
+
