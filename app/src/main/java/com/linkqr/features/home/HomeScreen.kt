@@ -15,13 +15,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.linkqr.domain.model.QrType
+import com.linkqr.monetization.LinkQrBannerAd
 
 @Composable
 fun HomeScreen(
     onGenerate: (QrType) -> Unit,
     onHistory: () -> Unit,
     onFavorites: () -> Unit,
-    onScanner: () -> Unit
+    onScanner: () -> Unit,
+    showAds: Boolean = false,
+    showPrivacyOptions: Boolean = false,
+    onPrivacyOptions: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -70,8 +74,23 @@ fun HomeScreen(
             Text("Escanear QR")
         }
 
+        if (showPrivacyOptions) {
+            OutlinedButton(
+                onClick = onPrivacyOptions,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Opciones de privacidad")
+            }
+        }
+
+        if (showAds) {
+            LinkQrBannerAd(
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
         Text(
-            text = "Phase 4 · Persistencia local",
+            text = "Phase 8 · Monetización FREE",
             style = MaterialTheme.typography.labelMedium
         )
     }
