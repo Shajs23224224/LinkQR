@@ -10,7 +10,7 @@ object QrOpenPolicy {
         if (value.isBlank() || !QrPayloadPolicy.isValid(value)) return false
 
         return when (type) {
-            QrType.URL -> hasHttpScheme(value)
+            QrType.URL -> hasHttpSchemeAndHost(value)
 
             QrType.WHATSAPP -> {
                 val uri = runCatching { URI(value) }.getOrNull() ?: return false
@@ -29,7 +29,9 @@ object QrOpenPolicy {
         }
     }
 
-    private fun hasHttpScheme(value: String): Boolean =
-        value.startsWith("http://", ignoreCase = true) ||
-            value.startsWith("https://", ignoreCase = true)
+    private fun hasHttpSchemeAndHost(value: String): Boolean {
+        val uri = runCatching { URI(value) }.getOrNull() ?: return false
+        val scheme = uri.scheme?.lowercase()
+        return (scheme == "http" || scheme == "https") && !uri.host.isNullOrBlank()
+    }
 }
