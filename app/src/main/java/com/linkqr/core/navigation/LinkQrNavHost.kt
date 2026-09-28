@@ -125,6 +125,7 @@ fun LinkQrNavHost(
                     type = type,
                     qrCodeGenerator = qrCodeGenerator,
                     qrHistoryRepository = qrHistoryRepository,
+                    isPro = isPro,
                     onBack = { navController.popBackStack() }
                 )
             }
