@@ -336,6 +336,7 @@ export class SaaSStore {
       ownerUserId: row.owner_user_id
     };
 }
+}
 
 type QrRow = {
   workspace_id: string;
@@ -353,6 +354,3 @@ type QrRow = {
   deleted: number;
   deleted_at: number | null;
 };
-
-
-}
