@@ -8,7 +8,8 @@ import androidx.room.PrimaryKey
     tableName = "qr_records",
     indices = [
         Index(value = ["createdAt"]),
-        Index(value = ["syncStatus"])
+        Index(value = ["syncStatus"]),
+        Index(value = ["syncId"], unique = true)
     ]
 )
 data class QrRecordEntity(
@@ -23,5 +24,8 @@ data class QrRecordEntity(
     val backgroundColor: Long = 0xFFFFFFFF,
     val marginModules: Int = 4,
     val syncId: String? = null,
-    val syncStatus: String = "PENDING"
+    val syncStatus: String = "PENDING",
+    val version: Long = 1,
+    val deviceId: String = "",
+    val deletedAt: Long? = null
 )
