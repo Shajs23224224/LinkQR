@@ -1,5 +1,7 @@
 name: Android CI
 
+# Build trigger: CI build requested by commit.
+
 on:
   push:
     branches: [ main ]
