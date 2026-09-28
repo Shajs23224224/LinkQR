@@ -5,7 +5,7 @@ import {
   RegisterSchema,
   type AuthConfig
 } from "./auth.js";
-import type { AuthStore, AuthSessionInfo } from "./authStore.js";
+import type { AuthRepository } from "./repositoryPorts.js";
 import type { AuthEmailSender } from "./authEmail.js";
 import { AuthRateLimiter } from "./authRateLimiter.js";
 
@@ -29,24 +29,7 @@ const ChangePasswordSchema = z.object({
   newPassword: z.string().min(8).max(128)
 });
 
-export type AuthStoreLike = Pick<
-  AuthStore,
-  | "createUser"
-  | "findUserByEmail"
-  | "verifyCredentials"
-  | "createSession"
-  | "getUserBySessionToken"
-  | "getSessionByToken"
-  | "listSessions"
-  | "revokeSession"
-  | "revokeSessionById"
-  | "revokeOtherSessions"
-  | "createEmailVerificationToken"
-  | "consumeEmailVerificationToken"
-  | "createPasswordResetToken"
-  | "resetPassword"
-  | "changePassword"
->;
+export type AuthStoreLike = AuthRepository;
 
 export type AuthPrincipal = {
   user: ReturnType<AuthStore["findUserByEmail"]> extends infer T
@@ -83,7 +66,7 @@ export function getBearerToken(request: FastifyRequest): string | null {
 
 export function getAuthenticatedUser(
   request: FastifyRequest,
-  authStore: AuthStoreLike
+  authStore: AuthRepository
 ) {
   const token = bearerToken(request);
   return token ? authStore.getUserBySessionToken(token) : null;
@@ -91,7 +74,7 @@ export function getAuthenticatedUser(
 
 export function getAuthenticatedSession(
   request: FastifyRequest,
-  authStore: AuthStoreLike
+  authStore: AuthRepository
 ) {
   const token = bearerToken(request);
   return token ? authStore.getSessionByToken(token) : null;
