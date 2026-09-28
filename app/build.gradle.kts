@@ -4,6 +4,14 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+val admobAppId = providers.gradleProperty("LINKQR_ADMOB_APP_ID")
+    .orElse("ca-app-pub-3940256099942544~3347511713")
+    .get()
+
+val admobBannerAdUnitId = providers.gradleProperty("LINKQR_ADMOB_BANNER_AD_UNIT_ID")
+    .orElse("ca-app-pub-3940256099942544/9214589741")
+    .get()
+
 android {
     namespace = "com.linkqr"
     compileSdk = 37
@@ -14,6 +22,26 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "0.1.0"
+
+        manifestPlaceholders["ADMOB_APP_ID"] = admobAppId
+    }
+
+    buildTypes {
+        debug {
+            buildConfigField(
+                "String",
+                "ADMOB_BANNER_AD_UNIT_ID",
+                "\"ca-app-pub-3940256099942544/9214589741\""
+            )
+        }
+
+        release {
+            buildConfigField(
+                "String",
+                "ADMOB_BANNER_AD_UNIT_ID",
+                "\"$admobBannerAdUnitId\""
+            )
+        }
     }
 
     compileOptions {
@@ -23,6 +51,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -50,6 +79,9 @@ dependencies {
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
+
+    implementation("com.google.android.gms:play-services-ads:25.5.0")
+    implementation("com.google.android.ump:user-messaging-platform:4.0.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
