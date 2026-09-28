@@ -1,6 +1,6 @@
 import Fastify from "fastify";
 import { z } from "zod";
-import { config } from "./config.js";
+import { loadConfig } from "./config.js";
 import { GooglePlayVerifier } from "./googlePlay.js";
 import { PurchaseStore } from "./store.js";
 
@@ -101,6 +101,8 @@ export function buildServer(
 }
 
 async function main() {
+  const config = loadConfig();
+
   const verifier = new GooglePlayVerifier(
     config.GOOGLE_SERVICE_ACCOUNT_JSON_B64
   );
