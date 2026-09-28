@@ -9,4 +9,5 @@ object Routes {
     const val SCANNER = "scanner"
     const val PRO = "pro"
     const val SETTINGS = "settings"
+    const val ACCOUNT = "account"
 }
