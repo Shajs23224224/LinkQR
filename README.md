@@ -149,3 +149,20 @@ Phase 11 expands automated regression coverage around the app's highest-risk log
 - Expanded persistence tests for custom QR design data, deletion and legacy/unknown types.
 - Expanded validation tests for colors, margins, phone, email and location inputs.
 - Android CI now publishes JUnit test results and HTML test reports as workflow artifacts, including failed runs when available.
+
+
+## Phase 12 — Publication
+
+LinkQR is prepared for the publication workflow with version **1.0.0**, a launcher logo, a release APK CI build, and an explicit Play Console deployment checklist.
+
+### Included
+
+- LinkQR launcher logo registered in the Android manifest.
+- QR customization with RGB sliders for foreground and background colors.
+- Live HEX representation of the selected RGB color.
+- Default QR: black `#000000` on white `#FFFFFF`.
+- Existing contrast and margin validation preserved.
+- CI builds both debug and release APKs.
+- Publication documentation in `docs/PUBLICATION.md`.
+
+The CI release artifact is unsigned by design. Production signing credentials must remain outside the repository.
