@@ -12,6 +12,10 @@ val admobBannerAdUnitId = providers.gradleProperty("LINKQR_ADMOB_BANNER_AD_UNIT_
     .orElse("ca-app-pub-3940256099942544/9214589741")
     .get()
 
+val linkQrApiBaseUrl = providers.gradleProperty("LINKQR_API_BASE_URL")
+    .orElse("")
+    .get()
+
 val releaseSaasBaseUrl = providers.gradleProperty("LINKQR_SAAS_BASE_URL")
     .orElse("https://api.example.invalid")
     .get()
@@ -31,6 +35,12 @@ android {
         versionName = "1.0.0"
 
         manifestPlaceholders["ADMOB_APP_ID"] = admobAppId
+
+        buildConfigField(
+            "String",
+            "AUTH_API_BASE_URL",
+            "\"$linkQrApiBaseUrl\""
+        )
     }
 
     buildTypes {
