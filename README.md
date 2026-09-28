@@ -41,20 +41,19 @@ Implement → compile → test → fix → freeze → next phase.
 
 ### Roadmap
 
-1. Foundations
-2. MVP URL QR
-3. Save + share
-4. All QR types
-5. History + favorites
-6. Scanner
-7. Customization
-8. Security + quality
-9. FREE monetization
-10. PRO billing
-11. Optimization
-12. Testing
-13. Publication
-14. SaaS preparation
+1. MVP URL QR
+2. Save + share
+3. All QR types
+4. History + favorites
+5. Scanner
+6. Customization
+7. Security + quality
+8. FREE monetization
+9. PRO billing
+10. Optimization
+11. Testing
+12. Publication
+13. SaaS preparation
 
 
 ## Phase 8 — FREE monetization
