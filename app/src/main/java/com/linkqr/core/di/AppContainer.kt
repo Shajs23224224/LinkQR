@@ -1,9 +1,18 @@
 package com.linkqr.core.di
 
-/**
- * Lightweight manual dependency container for V1.
- *
- * Keep infrastructure dependencies out of the domain layer.
- * Future remote services can be added here without changing domain contracts.
- */
-class AppContainer
+import android.content.Context
+import androidx.room.Room
+import com.linkqr.data.local.LinkQrDatabase
+import com.linkqr.data.repository.QrHistoryRepository
+
+class AppContainer(context: Context) {
+
+    private val database: LinkQrDatabase = Room.databaseBuilder(
+        context,
+        LinkQrDatabase::class.java,
+        "linkqr.db"
+    ).build()
+
+    val qrHistoryRepository: QrHistoryRepository =
+        QrHistoryRepository(database.qrRecordDao())
+}
