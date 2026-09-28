@@ -1,7 +1,7 @@
 package com.linkqr.qr
 
 import android.graphics.Bitmap
-import com.google.zxing.BitMatrix
+import com.google.zxing.common.BitMatrix
 import com.linkqr.core.performance.PerformancePolicy
 
 internal object QrBitmapRenderer {
@@ -41,13 +41,18 @@ internal object QrBitmapRenderer {
     }
 
     fun requireSupportedSize(sizePx: Int) {
-        require(sizePx in 128..1536) {
-            "El tamaño del QR debe estar entre 128 y 1536 píxeles."
+        require(
+            sizePx in PerformancePolicy.MIN_QR_BITMAP_SIZE_PX..PerformancePolicy.MAX_QR_BITMAP_SIZE_PX
+        ) {
+            "El tamaño del QR debe estar entre " +
+                PerformancePolicy.MIN_QR_BITMAP_SIZE_PX +
+                " y " +
+                PerformancePolicy.MAX_QR_BITMAP_SIZE_PX +
+                " píxeles."
         }
-        require(sizePx * sizePx <= 1536 * 1536) {
-            "El tamaño del QR supera el límite de memoria permitido."
-        }
-        require(sizePx * sizePx <= PerformancePolicy.MAX_QR_BITMAP_PIXELS * 4) {
+
+        val pixelCount = sizePx.toLong() * sizePx.toLong()
+        require(pixelCount <= PerformancePolicy.MAX_QR_BITMAP_PIXELS) {
             "El tamaño del QR supera el límite de memoria permitido."
         }
     }
