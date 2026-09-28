@@ -52,7 +52,7 @@ fun HomeScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
-                text = accountEmail?.let { "Cuenta · $it" }
+                text = accountEmail?.let { "Cuenta · ${it}" }
                     ?: "Iniciar sesión"
             )
         }
@@ -110,7 +110,7 @@ fun HomeScreen(
         }
 
         Text(
-            text = "Phase 14 · Autenticación de usuarios",
+            text = "Phase 16 · Sincronización SaaS opcional",
             style = MaterialTheme.typography.labelMedium
         )
     }
