@@ -12,6 +12,8 @@ import { registerAuthRoutes } from "./authRoutes.js";
 import type { AuthConfig } from "./auth.js";
 import { getAuthenticatedUser } from "./authRoutes.js";
 import type { AuthStoreLike } from "./authRoutes.js";
+import type { AuthEmailSender } from "./authEmail.js";
+import { WebhookAuthEmailSender } from "./authEmail.js";
 
 const requestSchema = z.object({
   purchaseToken: z.string().min(1).max(4096),
@@ -21,8 +23,12 @@ const requestSchema = z.object({
 export type BillingServerOptions = {
   packageName: string;
   proProductId: string;
-  auth?: AuthConfig;
+  auth?: AuthConfig & {
+    verificationLifetimeMs?: number;
+    passwordResetLifetimeMs?: number;
+  };
   authStore?: AuthStoreLike;
+  authEmailSender?: AuthEmailSender;
   saas?: SaaSConfig;
   saasStore?: SaaSStoreLike;
 };
@@ -47,7 +53,15 @@ export function buildServer(
   });
 
   if (options.auth?.enabled && options.authStore) {
-    registerAuthRoutes(app, options.authStore, options.auth);
+    if (!options.authEmailSender) {
+      throw new Error("Auth email sender is required when authentication is enabled.");
+    }
+    registerAuthRoutes(
+      app,
+      options.authStore,
+      options.auth,
+      options.authEmailSender
+    );
   }
 
   if (options.saas?.enabled && options.saasStore) {
@@ -161,14 +175,24 @@ async function main() {
   const saasStore = new SaaSStore(config.DATABASE_PATH);
   const authStore = new AuthStore(
     config.DATABASE_PATH,
-    config.AUTH.sessionDays * 24 * 60 * 60 * 1000
+    config.AUTH.sessionDays * 24 * 60 * 60 * 1000,
+    config.AUTH.verificationLifetimeMs,
+    config.AUTH.passwordResetLifetimeMs
   );
+
+  const authEmailSender = config.AUTH.enabled
+    ? new WebhookAuthEmailSender(
+        config.LINKQR_AUTH_EMAIL_WEBHOOK_URL!,
+        config.LINKQR_AUTH_EMAIL_WEBHOOK_TOKEN!
+      )
+    : undefined;
 
   const app = buildServer(verifier, store, {
     packageName: config.GOOGLE_PLAY_PACKAGE_NAME,
     proProductId: config.GOOGLE_PLAY_PRO_PRODUCT_ID,
     auth: config.AUTH,
     authStore,
+    authEmailSender,
     saas: config.SAAS,
     saasStore
   });
