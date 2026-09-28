@@ -16,7 +16,10 @@ import com.linkqr.qr.ZXingQrCodeGenerator
 fun LinkQrNavHost(
     navController: NavHostController,
     qrCodeGenerator: ZXingQrCodeGenerator = ZXingQrCodeGenerator(),
-    qrHistoryRepository: QrHistoryRepository
+    qrHistoryRepository: QrHistoryRepository,
+    showAds: Boolean = false,
+    showPrivacyOptions: Boolean = false,
+    onPrivacyOptions: () -> Unit = {}
 ) {
     NavHost(
         navController = navController,
@@ -35,7 +38,10 @@ fun LinkQrNavHost(
                 },
                 onScanner = {
                     navController.navigate(Routes.SCANNER)
-                }
+                },
+                showAds = showAds,
+                showPrivacyOptions = showPrivacyOptions,
+                onPrivacyOptions = onPrivacyOptions
             )
         }
 
