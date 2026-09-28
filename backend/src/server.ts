@@ -5,6 +5,7 @@ import { GooglePlayVerifier } from "./googlePlay.js";
 import { PurchaseStore } from "./store.js";
 import { SaaSStore } from "./saasStore.js";
 import { registerSaaSRoutes } from "./saasRoutes.js";
+import type { SaaSStoreLike } from "./saasRoutes.js";
 import type { SaaSConfig } from "./saas.js";
 
 const requestSchema = z.object({
@@ -17,7 +18,7 @@ export type BillingServerOptions = {
   packageName: string;
   proProductId: string;
   saas?: SaaSConfig;
-  saasStore?: SaaSStore;
+  saasStore?: SaaSStoreLike;
 };
 
 export function buildServer(
