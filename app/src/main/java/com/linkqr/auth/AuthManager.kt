@@ -47,9 +47,18 @@ class AuthManager(
                 api.me(token)
             }.onSuccess { user ->
                 _state.value = AuthState.Authenticated(user)
-            }.onFailure {
-                tokenStore.clear()
-                _state.value = AuthState.SignedOut
+            }.onFailure { error ->
+                // Do not destroy a valid local session just because the device
+                // is temporarily offline. Only an explicit authentication
+                // failure from the backend invalidates the stored token.
+                if (error is AuthApiException && error.statusCode == 401) {
+                    tokenStore.clear()
+                    _state.value = AuthState.SignedOut
+                } else {
+                    _state.value = AuthState.Error(
+                        "No se pudo validar la sesión. Comprueba tu conexión e inténtalo de nuevo."
+                    )
+                }
             }
         }
     }
