@@ -235,7 +235,7 @@ export function buildServer(
     }
 
     const authorization = request.headers.authorization ?? "";
-    const match = /^Bearer\\s+([^\\s]+)$/i.exec(authorization);
+    const match = /^Bearer\s+([^\s]+)$/i.exec(authorization);
     if (!isBearerTokenAuthorized(match?.[1] ?? null, options.observabilityToken)) {
       return reply.code(401).send({
         error: "UNAUTHORIZED"
