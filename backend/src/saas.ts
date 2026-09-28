@@ -9,8 +9,18 @@ export const SaaSConfigSchema = z.object({
   freeQrLimit: z.number().int().positive(),
   proQrLimit: z.number().int().positive()
 });
-
 export type SaaSConfig = z.infer<typeof SaaSConfigSchema>;
+
+export const UserRegisterSchema = z.object({
+  email: z.string().trim().email().max(254).transform((value) => value.toLowerCase()),
+  password: z.string().min(8).max(128),
+  name: z.string().trim().min(1).max(80)
+});
+
+export const UserLoginSchema = z.object({
+  email: z.string().trim().email().max(254).transform((value) => value.toLowerCase()),
+  password: z.string().min(1).max(128)
+});
 
 export const WorkspaceCreateSchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -28,11 +38,20 @@ export const WorkspaceQrRecordSchema = z.object({
   marginModules: z.number().int().min(1).max(8)
 });
 
+export type User = {
+  id: string;
+  email: string;
+  name: string;
+  passwordHash: string;
+  createdAt: number;
+};
+
 export type Workspace = {
   id: string;
   name: string;
   plan: SaaSPlan;
   createdAt: number;
+  ownerUserId: string | null;
 };
 
 export type WorkspaceQrRecord = z.infer<typeof WorkspaceQrRecordSchema> & {
