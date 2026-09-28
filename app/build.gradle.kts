@@ -39,6 +39,13 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.9.5")
     implementation("com.google.zxing:core:3.5.3")
 
+    val cameraVersion = "1.6.2"
+    implementation("androidx.camera:camera-core:$cameraVersion")
+    implementation("androidx.camera:camera-camera2:$cameraVersion")
+    implementation("androidx.camera:camera-lifecycle:$cameraVersion")
+    implementation("androidx.camera:camera-view:$cameraVersion")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.11.0")
+
     val roomVersion = "2.8.5"
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
