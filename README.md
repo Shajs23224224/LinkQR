@@ -133,3 +133,19 @@ Phase 10 keeps LinkQR lightweight for low-end Android devices and reduces avoida
 - History flows use `distinctUntilChanged()` after domain mapping to avoid redundant UI emissions.
 - Pure JVM unit coverage for QR bitmap pixel conversion without requiring the Android runtime.
 - Core QR generation remains synchronous from the UI's current architecture; no network dependency was introduced into generation.
+
+
+## Phase 11 — Testing
+
+Phase 11 expands automated regression coverage around the app's highest-risk logic and preserves test evidence in CI.
+
+### Included
+
+- Boundary coverage for QR bitmap sizes from 128 px to 1536 px.
+- Pure JVM coverage for QR pixel conversion without requiring the Android runtime.
+- Coverage for all seven QR content classifications.
+- Security regression tests for QR open policies and WhatsApp host spoofing.
+- UTF-8 byte-limit tests at and beyond the 2048-byte payload boundary.
+- Expanded persistence tests for custom QR design data, deletion and legacy/unknown types.
+- Expanded validation tests for colors, margins, phone, email and location inputs.
+- Android CI now publishes JUnit test results and HTML test reports as workflow artifacts, including failed runs when available.
