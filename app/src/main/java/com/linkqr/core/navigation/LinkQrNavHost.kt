@@ -77,6 +77,7 @@ fun LinkQrNavHost(
                     navController.navigate(Routes.ACCOUNT)
                 },
                 accountEmail = authenticatedUser?.email,
+                isPro = !showAds && !showRewardedAdOption,
                 showAds = showAds,
                 showRewardedAdOption = showRewardedAdOption,
                 onWatchRewardedAd = onWatchRewardedAd,
