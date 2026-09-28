@@ -45,7 +45,7 @@ export class AuthRateLimiter {
 
   prune(now = Date.now()): void {
     for (const [key, bucket] of this.buckets) {
-      const action = key.slice(key.indexOf(":") + 1);
+      const action = key.slice(0, key.indexOf(":"));
       const config = this.configs[action];
       if (!config || now - bucket.windowStartedAt >= config.windowMs) {
         this.buckets.delete(key);
