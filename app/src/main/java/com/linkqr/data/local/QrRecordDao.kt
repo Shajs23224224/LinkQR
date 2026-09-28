@@ -24,6 +24,9 @@ interface QrRecordDao {
     @Query("UPDATE qr_records SET syncId = :syncId WHERE id = :id")
     suspend fun updateSyncId(id: Long, syncId: String)
 
+    @Query("UPDATE qr_records SET deviceId = :deviceId WHERE id = :id")
+    suspend fun updateDeviceId(id: Long, deviceId: String)
+
     @Query(
         "UPDATE qr_records SET syncStatus = :status WHERE syncId = :syncId"
     )
