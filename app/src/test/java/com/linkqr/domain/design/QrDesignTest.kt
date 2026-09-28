@@ -8,6 +8,15 @@ import org.junit.Test
 
 class QrDesignTest {
 
+
+    @Test
+    fun defaultsToBlackQrOnWhiteBackground() {
+        val design = QrDesign()
+        assertEquals(0xFF000000L, design.foregroundColor)
+        assertEquals(0xFFFFFFFFL, design.backgroundColor)
+        QrDesignValidator.requireReadable(design)
+    }
+
     @Test
     fun parsesSixDigitHexColorAsOpaqueArgb() {
         assertEquals(0xFF336699L, ArgbColorParser.parse("#336699"))
