@@ -13,6 +13,7 @@ import com.linkqr.core.di.AppContainer
 import com.linkqr.core.navigation.LinkQrNavHost
 import com.linkqr.monetization.AdMobConsentManager
 import com.linkqr.monetization.BillingEntitlementManager
+import com.linkqr.monetization.Plan
 import com.linkqr.monetization.PlayBillingManager
 
 class MainActivity : ComponentActivity() {
@@ -46,7 +47,7 @@ class MainActivity : ComponentActivity() {
                         qrHistoryRepository = appContainer.qrHistoryRepository,
                         showAds = adsReady.value && entitlementManager.shouldShowAds(),
                         showPrivacyOptions =
-                            privacyOptionsRequired.value && entitlementPlan.name == "FREE",
+                            privacyOptionsRequired.value && entitlementPlan == Plan.FREE,
                         onPrivacyOptions = {
                             adMobConsentManager.showPrivacyOptions(this) {
                                 privacyOptionsRequired.value =
