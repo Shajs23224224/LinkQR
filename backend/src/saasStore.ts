@@ -39,8 +39,6 @@ export class SaaSStore {
       CREATE INDEX IF NOT EXISTS idx_workspace_qr_created_at
         ON workspace_qr_records(workspace_id, created_at DESC);
 
-      CREATE INDEX IF NOT EXISTS idx_workspace_qr_sync
-        ON workspace_qr_records(workspace_id, version, updated_at);
     `);
 
     const columns = this.db
@@ -75,6 +73,9 @@ export class SaaSStore {
     this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_workspace_owner
         ON workspaces(owner_user_id);
+
+      CREATE INDEX IF NOT EXISTS idx_workspace_qr_sync
+        ON workspace_qr_records(workspace_id, version, updated_at);
     `);
   }
 
