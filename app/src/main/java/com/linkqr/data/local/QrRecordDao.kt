@@ -43,28 +43,31 @@ interface QrRecordDao {
         SET isFavorite = :favorite,
             updatedAt = :updatedAt,
             version = version + 1,
+            deviceId = :deviceId,
             syncStatus = 'PENDING'
         WHERE id = :id AND deletedAt IS NULL
     """)
-    suspend fun updateFavorite(id: Long, favorite: Boolean, updatedAt: Long)
+    suspend fun updateFavorite(id: Long, favorite: Boolean, updatedAt: Long, deviceId: String)
 
     @Query("""
         UPDATE qr_records
         SET deletedAt = :deletedAt,
             updatedAt = :updatedAt,
             version = version + 1,
+            deviceId = :deviceId,
             syncStatus = 'PENDING'
         WHERE id = :id AND deletedAt IS NULL
     """)
-    suspend fun markDeleted(id: Long, deletedAt: Long, updatedAt: Long)
+    suspend fun markDeleted(id: Long, deletedAt: Long, updatedAt: Long, deviceId: String)
 
     @Query("""
         UPDATE qr_records
         SET deletedAt = :deletedAt,
             updatedAt = :updatedAt,
             version = version + 1,
+            deviceId = :deviceId,
             syncStatus = 'PENDING'
         WHERE deletedAt IS NULL
     """)
-    suspend fun markAllDeleted(deletedAt: Long, updatedAt: Long)
+    suspend fun markAllDeleted(deletedAt: Long, updatedAt: Long, deviceId: String)
 }
