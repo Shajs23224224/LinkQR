@@ -18,6 +18,8 @@ import com.linkqr.monetization.AdMobConsentManager
 import com.linkqr.monetization.BillingEntitlementManager
 import com.linkqr.monetization.Plan
 import com.linkqr.monetization.PlayBillingManager
+import com.linkqr.sync.SaaSApi
+import com.linkqr.sync.SaaSSyncManager
 
 class MainActivity : ComponentActivity() {
 
@@ -30,10 +32,22 @@ class MainActivity : ComponentActivity() {
     private val privacyOptionsRequired = mutableStateOf(false)
     private val adMobConsentManager = AdMobConsentManager()
 
+    private val authTokenStore by lazy {
+        AuthTokenStore(applicationContext)
+    }
+
     private val authManager by lazy {
         AuthManager(
             api = AuthApi(),
-            tokenStore = AuthTokenStore(applicationContext)
+            tokenStore = authTokenStore
+        )
+    }
+
+    private val saaSSyncManager by lazy {
+        SaaSSyncManager(
+            api = SaaSApi(),
+            tokenStore = authTokenStore,
+            dao = appContainer.qrRecordDao
         )
     }
 
@@ -51,6 +65,7 @@ class MainActivity : ComponentActivity() {
             val entitlementPlan by entitlementManager.plan.collectAsState()
             val billingState by billingManager.state.collectAsState()
             val authState by authManager.state.collectAsState()
+            val syncState by saaSSyncManager.state.collectAsState()
 
             MaterialTheme {
                 Surface {
@@ -78,7 +93,9 @@ class MainActivity : ComponentActivity() {
                         authState = authState,
                         onLogin = authManager::login,
                         onRegister = authManager::register,
-                        onLogout = authManager::logout
+                        onLogout = authManager::logout,
+                        syncState = syncState,
+                        onSync = saaSSyncManager::sync
                     )
                 }
             }
@@ -106,6 +123,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         billingManager.endConnection()
+        saaSSyncManager.close()
         authManager.close()
         super.onDestroy()
     }
