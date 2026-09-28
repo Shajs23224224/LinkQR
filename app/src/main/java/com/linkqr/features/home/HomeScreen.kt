@@ -36,7 +36,7 @@ fun HomeScreen(
         QrType.entries.forEach { type ->
             Button(
                 onClick = { onGenerate(type) },
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(type.label())
             }
