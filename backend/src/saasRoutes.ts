@@ -287,4 +287,4 @@ export function registerSaaSRoutes(
       };
     }
   );
-}}
+}
