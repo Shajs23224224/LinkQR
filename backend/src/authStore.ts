@@ -1,5 +1,12 @@
-import Database from "better-sqlite3";
+import type Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
+import type {
+  AuthRepository,
+  AuthSessionInfo,
+  AuthTokenRequest,
+  AuthenticatedSession
+} from "./repositoryPorts.js";
+import { openSqliteDatabase, optimizeSqliteDatabase } from "./sqlite.js";
 import {
   createOpaqueToken,
   hashPassword,
@@ -19,22 +26,9 @@ type UserRow = {
   email_verified_at: number | null;
 };
 
-export type AuthSessionInfo = {
-  sessionId: string;
-  createdAt: number;
-  expiresAt: number;
-  current: boolean;
-};
+export { AuthSessionInfo, AuthTokenRequest } from "./repositoryPorts.js";
 
-export type AuthTokenRequest = {
-  userId: string;
-  email: string;
-  name: string | null;
-  token: string;
-  expiresAt: number;
-};
-
-export class AuthStore {
+export class AuthStore implements AuthRepository {
   private readonly db: Database.Database;
 
   constructor(
@@ -43,8 +37,7 @@ export class AuthStore {
     private readonly verificationLifetimeMs = 24 * 60 * 60 * 1000,
     private readonly passwordResetLifetimeMs = 30 * 60 * 1000
   ) {
-    this.db = new Database(path);
-    this.db.pragma("journal_mode = WAL");
+    this.db = openSqliteDatabase(path);
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS users (
         user_id TEXT PRIMARY KEY,
@@ -94,6 +87,15 @@ export class AuthStore {
 
       CREATE INDEX IF NOT EXISTS idx_password_reset_user
         ON password_reset_tokens(user_id);
+
+      CREATE INDEX IF NOT EXISTS idx_auth_sessions_active_user_expiry
+        ON auth_sessions(user_id, revoked_at, expires_at);
+
+      CREATE INDEX IF NOT EXISTS idx_email_verification_active_user_expiry
+        ON email_verification_tokens(user_id, used_at, expires_at);
+
+      CREATE INDEX IF NOT EXISTS idx_password_reset_active_user_expiry
+        ON password_reset_tokens(user_id, used_at, expires_at);
     `);
 
     const userColumns = this.db
@@ -142,6 +144,8 @@ export class AuthStore {
     this.db
       .prepare("DELETE FROM password_reset_tokens WHERE expires_at <= ? OR used_at IS NOT NULL")
       .run(Date.now());
+
+    optimizeSqliteDatabase(this.db);
   }
 
   createUser(email: string, password: string, name: string | null): AuthUser {
@@ -207,12 +211,7 @@ export class AuthStore {
     return { sessionId, token, expiresAt };
   }
 
-  getSessionByToken(token: string, now = Date.now()): {
-    sessionId: string;
-    user: AuthUser;
-    createdAt: number;
-    expiresAt: number;
-  } | null {
+  getSessionByToken(token: string, now = Date.now()): AuthenticatedSession | null {
     const row = this.db
       .prepare(`
         SELECT
