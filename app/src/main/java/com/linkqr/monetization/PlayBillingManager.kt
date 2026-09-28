@@ -32,6 +32,10 @@ class PlayBillingManager(
 
     private var productDetails: ProductDetails? = null
 
+    init {
+        onProEntitlementChanged(_state.value.isPro)
+    }
+
     private val purchasesUpdatedListener = PurchasesUpdatedListener { billingResult, purchases ->
         when (billingResult.responseCode) {
             BillingResponseCode.OK -> purchases.orEmpty().forEach(::processPurchase)
