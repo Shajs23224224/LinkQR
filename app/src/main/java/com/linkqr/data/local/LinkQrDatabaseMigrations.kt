@@ -18,4 +18,16 @@ object LinkQrDatabaseMigrations {
             )
         }
     }
+
+    val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "ALTER TABLE qr_records ADD COLUMN remoteRecordId TEXT"
+            )
+            db.execSQL(
+                "CREATE UNIQUE INDEX IF NOT EXISTS index_qr_records_remoteRecordId " +
+                    "ON qr_records(remoteRecordId)"
+            )
+        }
+    }
 }
