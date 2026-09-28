@@ -10,4 +10,5 @@ import androidx.room.RoomDatabase
 )
 abstract class LinkQrDatabase : RoomDatabase() {
     abstract fun qrRecordDao(): QrRecordDao
+    abstract fun syncStateDao(): SyncStateDao
 }
