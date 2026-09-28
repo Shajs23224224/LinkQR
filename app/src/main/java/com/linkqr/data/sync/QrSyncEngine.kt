@@ -11,9 +11,10 @@ class QrSyncEngine(
         var conflicts = 0
 
         repository.pendingSyncRecords().forEach { local ->
-            val cloud = client.push(repository.toCloudRecord(local))
-            val applied = repository.applyRemote(cloud)
-            if (applied) pushed++ else conflicts++
+            val result = client.push(repository.toCloudRecord(local))
+            val applied = repository.applyRemote(result.record)
+            if (result.conflict) conflicts++
+            if (applied) pushed++
         }
 
         var pulled = 0
