@@ -105,6 +105,27 @@ class AuthManager(
         }
     }
 
+    fun changePassword(currentPassword: String, newPassword: String) {
+        val token = tokenStore.get()
+        if (token == null) {
+            _state.value = AuthState.SignedOut
+            return
+        }
+
+        _state.value = AuthState.Loading
+
+        scope.launch {
+            runCatching {
+                api.changePassword(token, currentPassword, newPassword)
+            }.onSuccess { session ->
+                tokenStore.save(session.token)
+                _state.value = AuthState.Authenticated(session.user)
+            }.onFailure { error ->
+                _state.value = AuthState.Error(mapError(error))
+            }
+        }
+    }
+
     fun requestPasswordReset(email: String) {
         scope.launch {
             runCatching {
