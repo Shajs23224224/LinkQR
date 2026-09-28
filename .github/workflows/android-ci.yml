@@ -5,13 +5,6 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch:
-    inputs:
-      signed_release:
-        description: "Build signed APK + AAB for release"
-        required: true
-        default: false
-        type: boolean
 
 permissions:
   contents: read
@@ -89,13 +82,9 @@ jobs:
 
   signed-release:
     name: Signed APK + AAB
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.signed_release == true }}
+    if: ${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[signed-release]') }}
     runs-on: ubuntu-latest
     env:
-      LINKQR_ADMOB_APP_ID: ${{ secrets.LINKQR_ADMOB_APP_ID }}
-      LINKQR_ADMOB_BANNER_AD_UNIT_ID: ${{ secrets.LINKQR_ADMOB_BANNER_AD_UNIT_ID }}
-      LINKQR_ADMOB_INTERSTITIAL_AD_UNIT_ID: ${{ secrets.LINKQR_ADMOB_INTERSTITIAL_AD_UNIT_ID }}
-      LINKQR_ADMOB_REWARDED_AD_UNIT_ID: ${{ secrets.LINKQR_ADMOB_REWARDED_AD_UNIT_ID }}
       LINKQR_KEYSTORE_PASSWORD: ${{ secrets.LINKQR_KEYSTORE_PASSWORD }}
       LINKQR_KEY_ALIAS: ${{ secrets.LINKQR_KEY_ALIAS }}
       LINKQR_KEY_PASSWORD: ${{ secrets.LINKQR_KEY_PASSWORD }}
@@ -145,15 +134,6 @@ jobs:
             -storepass "$LINKQR_KEYSTORE_PASSWORD" \
             -alias "$LINKQR_KEY_ALIAS" \
             >/dev/null
-
-      - name: Validate AdMob production configuration
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "$LINKQR_ADMOB_APP_ID"
-          test -n "$LINKQR_ADMOB_BANNER_AD_UNIT_ID"
-          test -n "$LINKQR_ADMOB_INTERSTITIAL_AD_UNIT_ID"
-          test -n "$LINKQR_ADMOB_REWARDED_AD_UNIT_ID"
 
       - name: Run unit tests
         run: ./gradlew test --stacktrace
