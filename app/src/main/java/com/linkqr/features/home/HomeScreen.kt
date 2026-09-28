@@ -25,6 +25,7 @@ fun HomeScreen(
     onScanner: () -> Unit,
     onPro: () -> Unit,
     onAccount: () -> Unit,
+    onAccount: () -> Unit,
     accountEmail: String? = null,
     showAds: Boolean = false,
     showPrivacyOptions: Boolean = false,
@@ -92,6 +93,13 @@ fun HomeScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("LinkQR PRO")
+        }
+
+        OutlinedButton(
+            onClick = onAccount,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Cuenta")
         }
 
         if (showPrivacyOptions) {
