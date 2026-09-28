@@ -14,7 +14,7 @@ class QrBitmapRendererTest {
     @Test
     fun bitMatrixRendersExpectedDimensions() {
         val matrix = BitMatrix(8, 8)
-        matrix[2, 3] = true
+        matrix.set(2, 3)
 
         val bitmap = QrBitmapRenderer.render(
             matrix = matrix,
