@@ -9,6 +9,7 @@ import com.google.zxing.NotFoundException
 import com.google.zxing.qrcode.QRCodeReader
 import com.google.zxing.common.HybridBinarizer
 import com.google.zxing.PlanarYUVLuminanceSource
+import com.linkqr.domain.qr.QrPayloadPolicy
 import java.nio.ByteBuffer
 
 class QrImageAnalyzer(
@@ -61,7 +62,7 @@ class QrImageAnalyzer(
             }
 
             val text = result?.text?.trim().orEmpty()
-            if (text.isNotBlank()) {
+            if (text.isNotBlank() && QrPayloadPolicy.isValid(text)) {
                 val now = System.currentTimeMillis()
                 if (text != lastResult || now - lastDetectedAt > 1500L) {
                     lastResult = text

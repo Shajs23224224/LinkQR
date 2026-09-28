@@ -16,7 +16,9 @@ class ZXingQrCodeGenerator {
         design: QrDesign = QrDesign()
     ): Bitmap {
         require(content.isNotBlank()) { "QR content cannot be blank" }
-        require(sizePx > 0) { "QR size must be greater than zero" }
+        require(sizePx in 128..1536) {
+            "El tamaño del QR debe estar entre 128 y 1536 píxeles."
+        }
         QrDesignValidator.requireReadable(design)
 
         val hints = mapOf(

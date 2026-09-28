@@ -6,7 +6,6 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -37,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.linkqr.data.repository.QrHistoryRepository
 import com.linkqr.domain.model.QrType
+import com.linkqr.domain.qr.QrIntentPolicy
 import com.linkqr.scanner.QrTypeClassifier
 import kotlinx.coroutines.launch
 
@@ -106,7 +106,11 @@ fun ScannerScreen(
                     copyToClipboard(context, scannedPayload.orEmpty())
                 },
                 onOpen = {
-                    openPayload(context, scannedPayload.orEmpty())
+                    openPayload(
+                        context,
+                        type = QrTypeClassifier.classify(scannedPayload.orEmpty()),
+                        payload = scannedPayload.orEmpty()
+                    )
                 },
                 onSave = {
                     val payload = scannedPayload.orEmpty()
@@ -149,15 +153,7 @@ private fun ScannerResult(
     onBack: () -> Unit
 ) {
     val type = QrTypeClassifier.classify(payload)
-    val canOpen = when (type) {
-        QrType.URL,
-        QrType.WHATSAPP,
-        QrType.PHONE,
-        QrType.EMAIL,
-        QrType.LOCATION -> true
-        QrType.WIFI,
-        QrType.TEXT -> false
-    }
+    val canOpen = QrIntentPolicy.createViewIntent(type, payload) != null
 
     Column(
         modifier = Modifier
@@ -278,11 +274,23 @@ private fun copyToClipboard(context: Context, payload: String) {
     Toast.makeText(context, "QR copiado", Toast.LENGTH_SHORT).show()
 }
 
-private fun openPayload(context: Context, payload: String) {
+private fun openPayload(
+    context: Context,
+    type: QrType,
+    payload: String
+) {
+    val intent = QrIntentPolicy.createViewIntent(type, payload)
+    if (intent == null) {
+        Toast.makeText(
+            context,
+            "Este QR no contiene un enlace seguro para abrir.",
+            Toast.LENGTH_LONG
+        ).show()
+        return
+    }
+
     runCatching {
-        context.startActivity(
-            Intent(Intent.ACTION_VIEW, Uri.parse(payload))
-        )
+        context.startActivity(intent)
     }.onFailure {
         Toast.makeText(
             context,
