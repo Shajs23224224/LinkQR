@@ -45,7 +45,7 @@ object QrPayloadBuilder {
         }
         is QrContent.Email -> {
             val address = content.address.trim()
-            require(address.matches(Regex("^[^\s@]+@[^\s@]+\.[^\s@]+$"))) {
+            require(address.matches(Regex("""^[^\s@]+@[^\s@]+\.[^\s@]+$"""))) {
                 "Email address is invalid"
             }
 
