@@ -179,7 +179,7 @@ export class SaaSStore {
 
   getQrRecord(workspaceId: string, recordId: string): WorkspaceQrRecord | null {
     const row = this.db
-      .prepare(\`
+      .prepare(`
         SELECT
           workspace_id,
           record_id,
@@ -197,7 +197,7 @@ export class SaaSStore {
           deleted_at
         FROM workspace_qr_records
         WHERE workspace_id = ? AND record_id = ?
-      \`)
+      `)
       .get(workspaceId, recordId) as QrRow | undefined;
 
     return row ? this.toQrRecord(row) : null;
@@ -215,7 +215,7 @@ export class SaaSStore {
       };
     }
 
-    this.db.prepare(\`
+    this.db.prepare(`
       INSERT INTO workspace_qr_records
         (
           workspace_id,
@@ -247,7 +247,7 @@ export class SaaSStore {
         device_id = excluded.device_id,
         deleted = excluded.deleted,
         deleted_at = excluded.deleted_at
-    \`).run(
+    `).run(
       record.workspaceId,
       record.recordId,
       record.type,
@@ -273,7 +273,7 @@ export class SaaSStore {
   }
 
   listQrRecords(workspaceId: string, includeDeleted = false): WorkspaceQrRecord[] {
-    const rows = this.db.prepare(\`
+    const rows = this.db.prepare(`
       SELECT
         workspace_id,
         record_id,
@@ -292,7 +292,7 @@ export class SaaSStore {
       FROM workspace_qr_records
       WHERE workspace_id = ? AND (? = 1 OR deleted = 0)
       ORDER BY created_at DESC
-    \`).all(workspaceId, includeDeleted ? 1 : 0) as QrRow[];
+    `).all(workspaceId, includeDeleted ? 1 : 0) as QrRow[];
 
     return rows.map((row) => this.toQrRecord(row));
   }
@@ -335,7 +335,7 @@ export class SaaSStore {
       createdAt: row.created_at,
       ownerUserId: row.owner_user_id
     };
-  }
+}
 
 type QrRow = {
   workspace_id: string;
