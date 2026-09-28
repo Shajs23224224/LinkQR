@@ -7,6 +7,8 @@ const schema = z.object({
   GOOGLE_PLAY_PRO_PRODUCT_ID: z.string().min(1),
   GOOGLE_SERVICE_ACCOUNT_JSON_B64: z.string().min(1),
   DATABASE_PATH: z.string().min(1).default("./linkqr-billing.db"),
+  DATABASE_BACKUP_DIR: z.string().min(1).optional(),
+  DATABASE_BACKUP_INTERVAL_HOURS: z.coerce.number().nonnegative().max(168).default(24),
   LINKQR_AUTH_ENABLED: z.enum(["true", "false"]).default("false"),
   LINKQR_AUTH_SESSION_DAYS: z.coerce.number().int().positive().max(365).default(30),
   LINKQR_AUTH_EMAIL_WEBHOOK_URL: z.string().url().optional(),
@@ -58,6 +60,13 @@ export function loadConfig() {
       freeQrLimit: parsed.LINKQR_SAAS_FREE_QR_LIMIT,
       proQrLimit: parsed.LINKQR_SAAS_PRO_QR_LIMIT
     },
-    OBSERVABILITY_TOKEN: parsed.LINKQR_OBSERVABILITY_TOKEN
+    OBSERVABILITY_TOKEN: parsed.LINKQR_OBSERVABILITY_TOKEN,
+    DATABASE_BACKUP: {
+      enabled:
+        Boolean(parsed.DATABASE_BACKUP_DIR) &&
+        parsed.DATABASE_BACKUP_INTERVAL_HOURS > 0,
+      directory: parsed.DATABASE_BACKUP_DIR,
+      intervalMs: parsed.DATABASE_BACKUP_INTERVAL_HOURS * 60 * 60 * 1000
+    }
   };
 }
