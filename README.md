@@ -235,3 +235,22 @@ Phase 16 prepares local QR records and the SaaS contract for future cloud synchr
 - Deletion propagation and multi-device conflict resolution intentionally deferred to a later tombstone/versioning phase.
 
 See `docs/PHASE-16.md` for the exact scope.
+
+## Phase 17 — Tombstones y resolución de conflictos
+
+Phase 17 convierte la preparación de Fase 16 en un protocolo de sincronización multi-dispositivo.
+
+### Incluido
+
+- Tombstones locales para que las eliminaciones puedan propagarse a la nube.
+- version y deviceId por registro.
+- Resolución determinista compartida entre Android y backend.
+- API SaaS que rechaza versiones obsoletas y devuelve el registro ganador.
+- Tombstones conservados en SQLite, pero excluidos de historial y cuota activa.
+- Cliente Android autenticado para push/pull.
+- Motor de sincronización que aplica ganadores y sincroniza tombstones.
+- Migración Room 3→4 y migración SQLite del backend.
+- CI separado para pruebas/backend build y Android unit tests/debug build.
+
+See docs/PHASE-17.md for the exact protocol and deferred scaling work.
+
