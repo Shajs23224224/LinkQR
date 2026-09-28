@@ -24,10 +24,13 @@ object QrPayloadBuilder {
         is QrContent.Wifi -> {
             require(content.ssid.isNotBlank()) { "Wi-Fi SSID cannot be blank" }
 
-            val security = content.security.trim().lowercase().let {
-                if (it.isBlank()) "WPA" else it.uppercase()
+            val security = when (content.security.trim().lowercase()) {
+                "", "wpa" -> "WPA"
+                "wep" -> "WEP"
+                "nopass" -> "nopass"
+                else -> content.security.trim().uppercase()
             }
-            require(security in setOf("WPA", "WEP", "NOPASS")) {
+            require(security in setOf("WPA", "WEP", "nopass")) {
                 "Wi-Fi security must be WPA, WEP or NOPASS"
             }
 
