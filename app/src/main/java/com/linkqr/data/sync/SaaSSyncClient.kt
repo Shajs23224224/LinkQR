@@ -1,5 +1,7 @@
 package com.linkqr.data.sync
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.IOException
 import java.net.HttpURLConnection
@@ -12,12 +14,12 @@ class SaaSSyncClient(
 ) {
     private val baseUrl = baseUrl.trimEnd('/')
 
-    fun push(record: CloudQrRecord): CloudQrRecord {
+    suspend fun push(record: CloudQrRecord): CloudQrRecord = withContext(Dispatchers.IO) {
         val connection = openConnection(
             "$baseUrl/v1/saas/workspaces/$workspaceId/qr",
             "POST"
         )
-        return execute(connection, record.toJson().toString()) { status, body ->
+        execute(connection, record.toJson().toString()) { status, body ->
             val json = JSONObject(body)
             when {
                 status in 200..299 -> json.getJSONObject("record").toCloudRecord()
@@ -30,12 +32,12 @@ class SaaSSyncClient(
         }
     }
 
-    fun pull(): List<CloudQrRecord> {
+    suspend fun pull(): List<CloudQrRecord> = withContext(Dispatchers.IO) {
         val connection = openConnection(
             "$baseUrl/v1/saas/workspaces/$workspaceId/qr?includeDeleted=true",
             "GET"
         )
-        return execute(connection, null) { status, body ->
+        execute(connection, null) { status, body ->
             if (status !in 200..299) {
                 val json = JSONObject(body)
                 throw IOException(
