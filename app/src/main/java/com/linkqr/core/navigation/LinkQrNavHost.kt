@@ -6,13 +6,10 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.linkqr.auth.AuthState
-import com.linkqr.auth.AuthApiRepository
-import com.linkqr.auth.AuthSession
 import com.linkqr.data.repository.QrHistoryRepository
 import com.linkqr.domain.model.QrType
 import com.linkqr.features.auth.AccountScreen
 import com.linkqr.features.auth.AuthScreen
-import com.linkqr.features.account.AccountScreen
 import com.linkqr.features.generator.QrGeneratorScreen
 import com.linkqr.features.history.QrHistoryScreen
 import com.linkqr.features.home.HomeScreen
@@ -127,15 +124,6 @@ fun LinkQrNavHost(
         composable(Routes.SCANNER) {
             com.linkqr.features.scanner.ScannerScreen(
                 repository = qrHistoryRepository,
-                onBack = { navController.popBackStack() }
-            )
-        }
-
-        composable(Routes.ACCOUNT) {
-            AccountScreen(
-                authRepository = authRepository,
-                session = authSession,
-                onSessionChanged = onAuthSessionChanged,
                 onBack = { navController.popBackStack() }
             )
         }
