@@ -9,6 +9,10 @@ const schema = z.object({
   DATABASE_PATH: z.string().min(1).default("./linkqr-billing.db"),
   LINKQR_AUTH_ENABLED: z.enum(["true", "false"]).default("false"),
   LINKQR_AUTH_SESSION_DAYS: z.coerce.number().int().positive().max(365).default(30),
+  LINKQR_AUTH_EMAIL_WEBHOOK_URL: z.string().url().optional(),
+  LINKQR_AUTH_EMAIL_WEBHOOK_TOKEN: z.string().min(32).optional(),
+  LINKQR_AUTH_EMAIL_VERIFICATION_HOURS: z.coerce.number().positive().max(168).default(24),
+  LINKQR_AUTH_PASSWORD_RESET_MINUTES: z.coerce.number().positive().max(120).default(30),
   LINKQR_SAAS_ENABLED: z.enum(["true", "false"]).default("false"),
   LINKQR_SAAS_API_KEY: z.string().min(32).optional(),
   LINKQR_SAAS_FREE_QR_LIMIT: z.coerce.number().int().positive().default(100),
@@ -26,11 +30,26 @@ export function loadConfig() {
     );
   }
 
+  if (authEnabled) {
+    if (!parsed.LINKQR_AUTH_EMAIL_WEBHOOK_URL) {
+      throw new Error(
+        "LINKQR_AUTH_EMAIL_WEBHOOK_URL is required when LINKQR_AUTH_ENABLED=true."
+      );
+    }
+    if (!parsed.LINKQR_AUTH_EMAIL_WEBHOOK_TOKEN) {
+      throw new Error(
+        "LINKQR_AUTH_EMAIL_WEBHOOK_TOKEN is required when LINKQR_AUTH_ENABLED=true."
+      );
+    }
+  }
+
   return {
     ...parsed,
     AUTH: {
       enabled: authEnabled,
-      sessionDays: parsed.LINKQR_AUTH_SESSION_DAYS
+      sessionDays: parsed.LINKQR_AUTH_SESSION_DAYS,
+      verificationLifetimeMs: parsed.LINKQR_AUTH_EMAIL_VERIFICATION_HOURS * 60 * 60 * 1000,
+      passwordResetLifetimeMs: parsed.LINKQR_AUTH_PASSWORD_RESET_MINUTES * 60 * 1000
     },
     SAAS: {
       enabled: saasEnabled,
