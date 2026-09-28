@@ -34,6 +34,17 @@ val releaseSaasBaseUrl = providers.gradleProperty("LINKQR_SAAS_BASE_URL")
     .orElse("https://api.example.invalid")
     .get()
 
+val releaseKeystoreFile = providers.environmentVariable("LINKQR_KEYSTORE_FILE").orNull
+val releaseKeystorePassword = providers.environmentVariable("LINKQR_KEYSTORE_PASSWORD").orNull
+val releaseKeyAlias = providers.environmentVariable("LINKQR_KEY_ALIAS").orNull
+val releaseKeyPassword = providers.environmentVariable("LINKQR_KEY_PASSWORD").orNull
+
+val hasReleaseSigning =
+    !releaseKeystoreFile.isNullOrBlank() &&
+        !releaseKeystorePassword.isNullOrBlank() &&
+        !releaseKeyAlias.isNullOrBlank() &&
+        !releaseKeyPassword.isNullOrBlank()
+
 fun quoteBuildConfigString(value: String): String =
     "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
 
@@ -49,6 +60,17 @@ android {
         versionName = "1.0.0"
 
         manifestPlaceholders["ADMOB_APP_ID"] = admobAppId
+    }
+
+    signingConfigs {
+        create("release") {
+            if (hasReleaseSigning) {
+                storeFile = file(requireNotNull(releaseKeystoreFile))
+                storePassword = releaseKeystorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
     }
 
     buildTypes {
@@ -83,6 +105,10 @@ android {
         }
 
         release {
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
