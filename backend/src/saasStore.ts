@@ -22,6 +22,7 @@ export class SaaSStore {
         type TEXT NOT NULL,
         payload TEXT NOT NULL,
         created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL DEFAULT 0,
         is_favorite INTEGER NOT NULL,
         foreground_color TEXT NOT NULL,
         background_color TEXT NOT NULL,
@@ -40,6 +41,15 @@ export class SaaSStore {
 
     if (!columns.some((column) => column.name === "owner_user_id")) {
       this.db.exec("ALTER TABLE workspaces ADD COLUMN owner_user_id TEXT");
+    }
+
+    const qrColumns = this.db
+      .prepare("PRAGMA table_info(workspace_qr_records)")
+      .all() as Array<{ name: string }>;
+
+    if (!qrColumns.some((column) => column.name === "updated_at")) {
+      this.db.exec("ALTER TABLE workspace_qr_records ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0");
+      this.db.exec("UPDATE workspace_qr_records SET updated_at = created_at WHERE updated_at = 0");
     }
 
     this.db.exec(`
@@ -157,16 +167,18 @@ export class SaaSStore {
             type,
             payload,
             created_at,
+            updated_at,
             is_favorite,
             foreground_color,
             background_color,
             margin_modules
           )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(workspace_id, record_id) DO UPDATE SET
           type = excluded.type,
           payload = excluded.payload,
           created_at = excluded.created_at,
+          updated_at = excluded.updated_at,
           is_favorite = excluded.is_favorite,
           foreground_color = excluded.foreground_color,
           background_color = excluded.background_color,
@@ -178,6 +190,7 @@ export class SaaSStore {
         record.type,
         record.payload,
         record.createdAt,
+        record.updatedAt,
         record.isFavorite ? 1 : 0,
         record.foregroundColor,
         record.backgroundColor,
@@ -194,6 +207,7 @@ export class SaaSStore {
           type,
           payload,
           created_at,
+          updated_at,
           is_favorite,
           foreground_color,
           background_color,
@@ -208,6 +222,7 @@ export class SaaSStore {
         type: string;
         payload: string;
         created_at: number;
+        updated_at: number;
         is_favorite: number;
         foreground_color: string;
         background_color: string;
@@ -220,6 +235,7 @@ export class SaaSStore {
       type: row.type,
       payload: row.payload,
       createdAt: row.created_at,
+      updatedAt: row.updated_at,
       isFavorite: row.is_favorite === 1,
       foregroundColor: row.foreground_color,
       backgroundColor: row.background_color,
