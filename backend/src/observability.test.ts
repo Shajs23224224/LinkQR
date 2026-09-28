@@ -25,7 +25,7 @@ describe("Observability metrics", () => {
     expect(output).toContain("# TYPE linkqr_http_requests_total counter");
     expect(output).toContain('linkqr_http_requests_total{method="GET",route="/health",status="200"} 1');
     expect(output).toContain("linkqr_readiness 1");
-    expect(output).toContain('linkqr_http_request_duration_seconds_bucket{le="0.05",method="GET",route="/health"} 1');
+    expect(output).toContain('linkqr_http_request_duration_seconds_bucket{method="GET",route="/health",le="0.05"} 1');
     expect(output).toContain("linkqr_http_request_duration_seconds_count");
   });
 
