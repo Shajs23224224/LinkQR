@@ -9,7 +9,7 @@ Esta fase crea un punto de entrada web independiente para preparar la implementa
 - HTML5 semántico, CSS3 y JavaScript nativo con módulos ES.
 - Sin framework ni dependencias de ejecución añadidas.
 - Configuración centralizada en `src/config.js`.
-- URL base de API configurable mediante `globalThis.LINKQR_API_BASE_URL` antes de cargar el módulo principal; valor local por defecto: `http://localhost:3000`.
+- URL base de API configurable mediante `globalThis.LINKQR_API_BASE_URL` antes de cargar el módulo principal; valor local por defecto: `http://localhost:8080`.
 - Timeout de solicitud definido como constante de configuración para uso futuro.
 - La clave administrativa/API del backend nunca debe incluirse en el cliente web.
 - No se realizan llamadas de red en esta fase.
