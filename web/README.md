@@ -1,41 +1,23 @@
-# LinkQR Web — Fase 2: configuración del proyecto
+# LinkQR Web
 
-## Alcance
+Interfaz web ligera para LinkQR, separada de la aplicación Android y del backend.
 
-Esta fase crea un punto de entrada web independiente para preparar la implementación progresiva de LinkQR Web sin alterar la aplicación Android ni el backend existente.
+## Tecnología
 
-## Decisiones técnicas
+- HTML5 semántico
+- CSS nativo con tokens y breakpoints
+- JavaScript ES modules
+- Sin dependencias de ejecución externas
 
-- HTML5 semántico, CSS3 y JavaScript nativo con módulos ES.
-- Sin framework ni dependencias de ejecución añadidas.
-- Configuración centralizada en `src/config.js`.
-- URL base de API configurable mediante `globalThis.LINKQR_API_BASE_URL` antes de cargar el módulo principal; valor local por defecto: `http://localhost:8080`.
-- Timeout de solicitud definido como constante de configuración para uso futuro.
-- La clave administrativa/API del backend nunca debe incluirse en el cliente web.
-- No se realizan llamadas de red en esta fase.
+## Ejecutar
 
-## Estructura
-
-```text
-web/
-├── index.html
-├── package.json
-├── README.md
-└── src/
-    ├── config.js
-    ├── main.js
-    └── styles.css
-```
-
-## Ejecución local
-
-Desde este directorio, con Python 3 instalado:
+Desde `web/`:
 
 ```bash
 npm run dev
 ```
 
-Abrir http://localhost:4173. Para detener el servidor, usar Ctrl+C.
+Abrir http://localhost:4173.
 
 ## Comprobación estática
 
@@ -43,8 +25,15 @@ Abrir http://localhost:4173. Para detener el servidor, usar Ctrl+C.
 npm run check
 ```
 
-La comprobación valida la sintaxis de los módulos JavaScript. No sustituye pruebas de navegador ni pruebas de integración.
+Este comando verifica la sintaxis de los módulos principales. No sustituye pruebas de navegador.
 
-## Fuera de alcance
+## Documentación por fase
 
-Diseño visual final, navegación funcional, generación y lectura QR, autenticación, persistencia, sincronización, PWA y despliegue pertenecen a fases posteriores.
+- [Fase 1 — Auditoría y arquitectura](../docs/WEB-PHASE-01-ARCHITECTURE.md)
+- [Fase 2 — Configuración del proyecto](./README.md)
+- [Fase 3 — Sistema visual responsive](./DESIGN-SYSTEM.md)
+- [Fase 4 — Navegación y panel](./PHASE-04-NAVIGATION.md)
+
+## Estado actual
+
+Fase 4 establece el shell de navegación y vistas informativas preparadas. La generación/escaneo real, almacenamiento, autenticación, sincronización y despliegue se implementarán en sus fases correspondientes.
