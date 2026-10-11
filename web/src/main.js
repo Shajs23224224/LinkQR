@@ -1,4 +1,9 @@
 import { appConfig } from "./config.js";
+import {
+  destroyQrGenerator,
+  initQrGenerator,
+  renderQrGenerator,
+} from "./features/generator/qr-generator.js";
 
 const view = document.querySelector("#page-view");
 const breadcrumbCurrent = document.querySelector("#breadcrumb-current");
@@ -16,7 +21,7 @@ const routeDefinitions = {
     label: "Crear QR",
     title: "Generador QR",
     phase: "Fase 5",
-    description: "Aquí estará el flujo para crear códigos QR, validar contenido y mostrar una vista previa.",
+    description: "Genera códigos QR reales a partir de una dirección web o texto.",
   },
   scanner: {
     label: "Escáner",
@@ -59,7 +64,7 @@ function renderHome() {
       <div class="welcome-copy">
         <span class="welcome-kicker">BIENVENIDO A LINKQR</span>
         <h2 id="welcome-title">Tus ideas, listas<br />para convertirse en QR.</h2>
-        <p>Empieza con una dirección web, un texto o la información que quieras compartir. Las herramientas se habilitarán fase por fase.</p>
+        <p>Genera un código QR para una dirección web o un texto. Las demás herramientas se habilitarán por fases.</p>
         <a class="button button-primary" href="#/generator">Preparar un código QR <span aria-hidden="true">→</span></a>
       </div>
       <div class="welcome-art" aria-hidden="true">
@@ -84,7 +89,7 @@ function renderHome() {
           <span class="quick-icon quick-icon-brand" aria-hidden="true">▦</span>
           <span class="quick-card-copy"><strong>Crear un QR</strong><small>Prepara un nuevo código</small></span>
           <span class="quick-arrow" aria-hidden="true">↗</span>
-          <span class="quick-card-state">Siguiente fase</span>
+          <span class="quick-card-state">Disponible</span>
         </a>
         <a class="quick-card" href="#/scanner">
           <span class="quick-icon" aria-hidden="true">⌗</span>
@@ -109,8 +114,8 @@ function renderHome() {
         <article class="overview-card">
           <span class="overview-icon" aria-hidden="true">▦</span>
           <span class="overview-label">Códigos QR</span>
-          <strong class="overview-value">En preparación</strong>
-          <span class="overview-foot">Generación prevista en Fase 5</span>
+          <strong class="overview-value">Listo para crear</strong>
+          <span class="overview-foot">Generación local disponible</span>
         </article>
         <article class="overview-card">
           <span class="overview-icon overview-icon-green" aria-hidden="true">◉</span>
@@ -126,7 +131,7 @@ function renderHome() {
         </article>
       </div>
     </section>
-    <p class="page-footnote"><span aria-hidden="true">ⓘ</span> Esta versión muestra la estructura de navegación. La creación, lectura y guardado real de QR todavía no están activados.</p>
+    <p class="page-footnote"><span aria-hidden="true">ⓘ</span> La generación de QR ya funciona en este navegador. La lectura y el guardado se incorporarán en fases posteriores.</p>
   `;
 }
 
@@ -172,7 +177,12 @@ function renderRoute({ moveFocus = false } = {}) {
 
   const routeName = getCurrentRoute();
   const route = routeDefinitions[routeName];
-  view.innerHTML = routeName === "home" ? route.render() : renderPlaceholder(route);
+  destroyQrGenerator();
+  view.innerHTML = routeName === "home"
+    ? route.render()
+    : routeName === "generator"
+      ? renderQrGenerator()
+      : renderPlaceholder(route);
 
   document.querySelectorAll("[data-route]").forEach((link) => {
     if (!(link instanceof HTMLAnchorElement)) return;
@@ -184,6 +194,8 @@ function renderRoute({ moveFocus = false } = {}) {
       link.removeAttribute("aria-current");
     }
   });
+
+  if (routeName === "generator") initQrGenerator();
 
   if (breadcrumbCurrent) breadcrumbCurrent.textContent = route.label;
   document.title = `${route.label} · ${appConfig.appName}`;
