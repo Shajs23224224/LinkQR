@@ -16,7 +16,7 @@
 | Hash | Vista | Alcance actual |
 | --- | --- | --- |
 | `#/home` | Inicio | Panel informativo y accesos rápidos |
-| `#/generator` | Crear QR | Vista de preparación; generación en Fase 5 |
+| `#/generator` | Crear QR | Generación local URL/texto disponible; detalles en Fase 5 |
 | `#/scanner` | Escáner | Vista de preparación; lectura en Fase 7 |
 | `#/history` | Historial | Vista de preparación; persistencia en Fase 8 |
 | `#/favorites` | Favoritos | Vista de preparación; favoritos en Fase 8 |
