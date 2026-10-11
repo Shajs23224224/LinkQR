@@ -1,31 +1,37 @@
 # LinkQR Web
 
-Interfaz web ligera para LinkQR, separada de la aplicación Android y del backend.
+Cliente web de LinkQR, independiente de la aplicación Android y del backend.
 
 ## Tecnología
 
-- HTML5 semántico
-- CSS nativo con tokens y breakpoints
-- JavaScript ES modules
-- Sin dependencias de ejecución externas
+- HTML5 semántico, CSS responsive y JavaScript con módulos ES.
+- Vite para servidor de desarrollo y empaquetado estático.
+- `qrcode` para generar QR reales en el navegador.
+- Sin framework de interfaz.
+
+## Requisitos
+
+Node.js `^20.19.0 || >=22.12.0` y npm.
 
 ## Ejecutar
 
-Desde `web/`:
+Desde el directorio `web/`:
 
 ```bash
+npm install
 npm run dev
 ```
 
 Abrir http://localhost:4173.
 
-## Comprobación estática
+## Comandos de calidad
 
 ```bash
-npm run check
+npm run check   # sintaxis de los módulos
+npm test        # pruebas unitarias de validación
+npm run build   # bundle estático de producción en dist/
+npm run preview # servir el bundle de producción en localhost:4174
 ```
-
-Este comando verifica la sintaxis de los módulos principales. No sustituye pruebas de navegador.
 
 ## Documentación por fase
 
@@ -33,7 +39,10 @@ Este comando verifica la sintaxis de los módulos principales. No sustituye prue
 - [Fase 2 — Configuración del proyecto](./README.md)
 - [Fase 3 — Sistema visual responsive](./DESIGN-SYSTEM.md)
 - [Fase 4 — Navegación y panel](./PHASE-04-NAVIGATION.md)
+- [Fase 5 — Generación y validación QR](./PHASE-05-QR-GENERATOR.md)
 
-## Estado actual
+## Estado funcional
 
-Fase 4 establece el shell de navegación y vistas informativas preparadas. La generación/escaneo real, almacenamiento, autenticación, sincronización y despliegue se implementarán en sus fases correspondientes.
+- **Implementado:** panel y navegación; generación local de QR para URLs HTTP/HTTPS y texto libre con vista previa.
+- **Pendiente:** personalización/exportación, escáner, historial persistente, favoritos, cuenta, sincronización, PWA y despliegue.
+- La aplicación nunca recibe la clave administrativa del backend en el cliente web.
