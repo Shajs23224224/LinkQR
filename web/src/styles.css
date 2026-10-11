@@ -330,7 +330,7 @@ button {
 }
 
 .section-index {
-  color: #818cf8;
+  color: var(--color-brand);
   font-size: 0.63rem;
 }
 
@@ -469,7 +469,7 @@ button {
 }
 
 .type-label {
-  color: #9ca3af;
+  color: var(--color-muted);
   font-size: 0.62rem;
 }
 
@@ -557,7 +557,7 @@ button {
 }
 
 .input-wrap input::placeholder {
-  color: #9ca3af;
+  color: var(--color-muted);
 }
 
 .input-hint {
