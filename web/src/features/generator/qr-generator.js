@@ -210,6 +210,8 @@ export function initQrGenerator() {
     clearError();
     statusElement.textContent = "";
 
+    if (generateButton.disabled) return;
+
     const validation = validateQrInput(payloadField.value, typeSelect.value);
     if (!validation.ok) {
       errorElement.textContent = validation.error;
@@ -221,6 +223,9 @@ export function initQrGenerator() {
 
     const currentSequence = ++generationSequence;
     generateButton.disabled = true;
+    typeSelect.disabled = true;
+    payloadField.disabled = true;
+    clearButton.disabled = true;
     generateButton.setAttribute("aria-busy", "true");
     generateButton.textContent = "Generando…";
     form.setAttribute("aria-busy", "true");
@@ -258,6 +263,9 @@ export function initQrGenerator() {
     } finally {
       if (currentSequence === generationSequence && !signal.aborted) {
         generateButton.disabled = false;
+        typeSelect.disabled = false;
+        payloadField.disabled = false;
+        clearButton.disabled = false;
         generateButton.removeAttribute("aria-busy");
         generateButton.innerHTML = '<span aria-hidden="true">▦</span> Generar código QR <span aria-hidden="true">→</span>';
         form.removeAttribute("aria-busy");
