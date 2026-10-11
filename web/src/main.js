@@ -219,6 +219,11 @@ document.addEventListener("click", (event) => {
   const target = event.target;
   if (!(target instanceof Element)) return;
 
+  const navigationLink = target.closest("a[data-route]");
+  if (navigationLink instanceof HTMLAnchorElement) {
+    closeMobileNavigation();
+  }
+
   const routeLink = target.closest("[data-route-link]");
   if (routeLink instanceof HTMLElement && routeLink.dataset.routeLink) {
     window.location.hash = `/${routeLink.dataset.routeLink}`;
