@@ -4,192 +4,94 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#f8f9fc" />
-    <meta name="description" content="Sistema visual de LinkQR: identidad, tokens y componentes responsive." />
-    <title>LinkQR · Sistema visual</title>
+    <meta name="description" content="LinkQR: administra tu espacio de códigos QR desde una interfaz clara y responsive." />
+    <title>Inicio · LinkQR</title>
     <link rel="stylesheet" href="./src/styles.css" />
     <script type="module" src="./src/main.js"></script>
   </head>
   <body>
     <a class="skip-link" href="#main-content">Saltar al contenido</a>
 
-    <header class="topbar">
-      <a class="brand" href="#main-content" aria-label="LinkQR, inicio">
-        <span class="brand-mark" aria-hidden="true">
-          <span></span><span></span><span></span><span></span>
-        </span>
-        <span class="brand-word">Link<span>QR</span></span>
-      </a>
-      <div class="topbar-meta">
-        <span class="topbar-label">Web platform</span>
-        <span class="version-pill">Fase 03 <span aria-hidden="true">·</span> v0.1.0</span>
-      </div>
-    </header>
+    <div class="app-layout">
+      <button class="sidebar-overlay" id="sidebar-overlay" type="button" aria-label="Cerrar menú" hidden></button>
 
-    <main id="main-content" class="page-wrap">
-      <section class="intro" aria-labelledby="page-title">
-        <p class="eyebrow"><span class="eyebrow-dot"></span> IDENTIDAD VISUAL · 03</p>
-        <h1 id="page-title">Una identidad clara.<br /><span>QR sin fricción.</span></h1>
-        <p class="intro-copy">Un lenguaje visual consistente, accesible y adaptable para crear una experiencia LinkQR familiar en escritorio, tablet y móvil.</p>
-        <div class="intro-actions">
-          <button class="button button-primary" id="demo-primary" type="button">
-            Probar acción principal
-            <span aria-hidden="true">↗</span>
-          </button>
-          <a class="button button-secondary" href="#components">Explorar componentes</a>
-        </div>
-        <p id="demo-feedback" class="interaction-note" role="status" aria-live="polite">Sistema visual cargado · sin dependencias externas.</p>
-      </section>
-
-      <section class="design-grid" aria-label="Muestras del sistema visual">
-        <article class="panel palette-panel" aria-labelledby="palette-title">
-          <div class="panel-heading">
-            <div>
-              <p class="section-index">01 / FUNDAMENTOS</p>
-              <h2 id="palette-title">Paleta de color</h2>
-            </div>
-            <span class="soft-badge">Tokens</span>
-          </div>
-          <p class="panel-copy">Contraste alto, superficies calmadas y un color de acción reconocible.</p>
-          <div class="color-list">
-            <div class="color-token">
-              <span class="color-swatch swatch-brand" aria-hidden="true"></span>
-              <span class="color-details"><strong>Brand / Indigo</strong><small>#4F46E5</small></span>
-              <span class="color-role">Acción</span>
-            </div>
-            <div class="color-token">
-              <span class="color-swatch swatch-ink" aria-hidden="true"></span>
-              <span class="color-details"><strong>Ink / 950</strong><small>#111827</small></span>
-              <span class="color-role">Texto</span>
-            </div>
-            <div class="color-token">
-              <span class="color-swatch swatch-surface" aria-hidden="true"></span>
-              <span class="color-details"><strong>Surface / White</strong><small>#FFFFFF</small></span>
-              <span class="color-role">Tarjetas</span>
-            </div>
-            <div class="color-token">
-              <span class="color-swatch swatch-success" aria-hidden="true"></span>
-              <span class="color-details"><strong>Success / Green</strong><small>#15803D</small></span>
-              <span class="color-role">Confirmación</span>
-            </div>
-          </div>
-          <div class="palette-foot">
-            <span class="contrast-mark" aria-hidden="true">Aa</span>
-            <p>Los estados no dependen solo del color: también usan texto e iconografía.</p>
-          </div>
-        </article>
-
-        <article class="panel type-panel" aria-labelledby="type-title">
-          <div class="panel-heading">
-            <div>
-              <p class="section-index">02 / TIPOGRAFÍA</p>
-              <h2 id="type-title">Jerarquía legible</h2>
-            </div>
-            <span class="soft-badge">Sistema</span>
-          </div>
-          <p class="type-display">Crear. Compartir.<br /><span>Conectar.</span></p>
-          <div class="type-specimens">
-            <div><span class="type-label">TÍTULO / 40–56</span><strong class="sample-heading">Todo empieza aquí</strong></div>
-            <div><span class="type-label">SUBTÍTULO / 18</span><span class="sample-subheading">Genera códigos QR con claridad.</span></div>
-            <div><span class="type-label">CUERPO / 14–16</span><span class="sample-body">Interfaz enfocada, espacios amplios y textos fáciles de recorrer.</span></div>
-          </div>
-        </article>
-
-        <article class="panel components-panel" id="components" aria-labelledby="components-title">
-          <div class="panel-heading">
-            <div>
-              <p class="section-index">03 / COMPONENTES</p>
-              <h2 id="components-title">Acciones y controles</h2>
-            </div>
-            <span class="soft-badge">Base UI</span>
-          </div>
-          <p class="panel-copy">Controles con etiquetas explícitas, estados de foco visibles y objetivos táctiles cómodos.</p>
-          <div class="component-block">
-            <span class="type-label">BOTONES</span>
-            <div class="button-row">
-              <button class="button button-primary" type="button" data-demo-message="Estilo primario: acción prioritaria.">Primario <span aria-hidden="true">↗</span></button>
-              <button class="button button-secondary" type="button" data-demo-message="Estilo secundario: alternativa de menor énfasis.">Secundario</button>
-              <button class="button button-quiet" type="button" data-demo-message="Estilo discreto: acción contextual.">Discreto</button>
-            </div>
-          </div>
-          <div class="component-block">
-            <label class="field-label" for="sample-field">CAMPO DE TEXTO</label>
-            <div class="input-wrap">
-              <span class="input-symbol" aria-hidden="true">⌕</span>
-              <input id="sample-field" type="text" placeholder="Busca un componente…" autocomplete="off" />
-              <span class="input-hint">Demo</span>
-            </div>
-            <p class="field-help">Etiqueta persistente y ayuda secundaria con contraste suficiente.</p>
-          </div>
-          <div class="component-block">
-            <span class="type-label">ESTADOS</span>
-            <div class="status-row">
-              <span class="status-pill status-success"><span aria-hidden="true">✓</span> Listo</span>
-              <span class="status-pill status-neutral"><span aria-hidden="true">•</span> Borrador</span>
-              <span class="status-pill status-warning"><span aria-hidden="true">!</span> Revisar</span>
-            </div>
-          </div>
-        </article>
-
-        <article class="panel qr-panel" aria-labelledby="qr-title">
-          <div class="panel-heading">
-            <div>
-              <p class="section-index">04 / ELEMENTO DE MARCA</p>
-              <h2 id="qr-title">El QR como protagonista</h2>
-            </div>
-          </div>
-          <p class="panel-copy">Una presentación limpia que reserva el mayor peso visual para el código y su acción principal.</p>
-          <div class="qr-demo-layout">
-            <div class="qr-card" aria-label="Ilustración decorativa de un código QR; no es escaneable">
-              <svg class="qr-illustration" viewBox="0 0 210 210" role="img" aria-labelledby="qr-art-title">
-                <title id="qr-art-title">Patrón ilustrativo, no escaneable</title>
-                <rect width="210" height="210" rx="8" fill="#fff"/>
-                <g fill="#111827">
-                  <path d="M12 12h56v56H12zM22 22v36h36V22z" fill-rule="evenodd"/>
-                  <path d="M25 25h30v30H25zM32 32v16h16V32z" fill-rule="evenodd"/>
-                  <path d="M142 12h56v56h-56zM152 22v36h36V22z" fill-rule="evenodd"/>
-                  <path d="M155 25h30v30h-30zM162 32v16h16V32z" fill-rule="evenodd"/>
-                  <path d="M12 142h56v56H12zM22 152v36h36v-36z" fill-rule="evenodd"/>
-                  <path d="M25 155h30v30H25zM32 162v16h16v-16z" fill-rule="evenodd"/>
-                  <path d="M82 12h14v14H82zM110 12h14v28h-14zM82 40h14v14H82zM96 54h14v14H96zM82 68h28v14H82zM124 54h14v28h-14zM82 96h14v14H82zM110 82h14v14h-14zM138 82h14v14h-14zM166 82h14v14h-14zM82 110h28v14H82zM124 110h14v28h-14zM152 110h14v14h-14zM180 110h18v14h-18zM82 138h14v14H82zM96 152h14v14H96zM110 138h14v28h-14zM138 152h14v14h-14zM152 138h14v14h-14zM180 138h18v14h-18zM82 180h28v18H82zM124 180h14v18h-14zM152 166h14v18h-14zM180 180h18v18h-18z"/>
-                </g>
-                <rect x="89" y="89" width="32" height="32" rx="9" fill="#4F46E5"/>
-                <path d="M98 105h14M105 98v14" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
-              </svg>
-              <span class="qr-caption">Preview conceptual</span>
-            </div>
-            <div class="qr-summary">
-              <span class="status-pill status-neutral">Diseño base</span>
-              <h3>Simple por defecto.</h3>
-              <p>Contraste fuerte, bordes definidos y espacio libre alrededor del código.</p>
-              <div class="mini-metric"><span class="metric-dot"></span><span>Preparado para adaptar</span></div>
-            </div>
-          </div>
-        </article>
-      </section>
-
-      <section class="principles" aria-label="Principios de diseño">
-        <div class="principle">
-          <span class="principle-icon" aria-hidden="true">↔</span>
-          <div><strong>Responsive de verdad</strong><p>Diseño fluido desde 320 px hasta escritorio.</p></div>
-        </div>
-        <div class="principle">
-          <span class="principle-icon" aria-hidden="true">⌘</span>
-          <div><strong>Accesible por teclado</strong><p>Foco visible, semántica y movimiento reducido.</p></div>
-        </div>
-        <div class="principle">
-          <span class="principle-icon" aria-hidden="true">◈</span>
-          <div><strong>Ligero y autónomo</strong><p>HTML, CSS y JavaScript nativo, sin fuentes remotas.</p></div>
-        </div>
-      </section>
-
-      <footer class="page-footer">
-        <a class="brand footer-brand" href="#main-content" aria-label="Volver al inicio de LinkQR">
-          <span class="brand-mark brand-mark-small" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
+      <aside class="sidebar" id="sidebar" aria-label="Navegación principal">
+        <a class="brand" href="#/home" aria-label="LinkQR, inicio">
+          <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
           <span class="brand-word">Link<span>QR</span></span>
         </a>
-        <p>Fase 03 · Sistema visual responsive</p>
-        <span class="footer-status"><span class="eyebrow-dot"></span> Base UI</span>
-      </footer>
-    </main>
+
+        <div class="workspace-switcher">
+          <span class="workspace-avatar" aria-hidden="true">L</span>
+          <span class="workspace-name"><strong>Mi espacio</strong><small>Espacio local</small></span>
+          <span class="workspace-chevron" aria-hidden="true">⌄</span>
+        </div>
+
+        <nav class="sidebar-navigation" id="sidebar-navigation" aria-label="Secciones">
+          <p class="nav-heading">ESPACIO DE TRABAJO</p>
+          <a class="nav-item" href="#/home" data-route="home">
+            <span class="nav-icon" aria-hidden="true">⌂</span><span>Inicio</span>
+          </a>
+          <a class="nav-item" href="#/generator" data-route="generator">
+            <span class="nav-icon nav-icon-qr" aria-hidden="true">▦</span><span>Crear QR</span><span class="nav-shortcut">+</span>
+          </a>
+          <a class="nav-item" href="#/scanner" data-route="scanner">
+            <span class="nav-icon" aria-hidden="true">⌗</span><span>Escáner</span>
+          </a>
+          <a class="nav-item" href="#/history" data-route="history">
+            <span class="nav-icon" aria-hidden="true">◷</span><span>Historial</span>
+          </a>
+          <a class="nav-item" href="#/favorites" data-route="favorites">
+            <span class="nav-icon" aria-hidden="true">♡</span><span>Favoritos</span>
+          </a>
+
+          <p class="nav-heading nav-heading-spaced">PREFERENCIAS</p>
+          <a class="nav-item" href="#/settings" data-route="settings">
+            <span class="nav-icon" aria-hidden="true">⚙</span><span>Ajustes</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-bottom">
+          <div class="offline-card">
+            <span class="offline-indicator" aria-hidden="true"></span>
+            <div><strong>Modo local</strong><small>Cuenta y nube sin conectar</small></div>
+          </div>
+          <div class="sidebar-profile">
+            <span class="profile-avatar" aria-hidden="true">U</span>
+            <div class="profile-copy"><strong>Usuario local</strong><small>Sesión no iniciada</small></div>
+            <span class="profile-menu" aria-hidden="true">···</span>
+          </div>
+          <p class="sidebar-version">LinkQR Web <span>v0.1.0</span></p>
+        </div>
+      </aside>
+
+      <div class="main-column">
+        <header class="app-header">
+          <div class="header-left">
+            <button class="icon-button menu-button" id="menu-toggle" type="button" aria-label="Abrir menú" aria-controls="sidebar" aria-expanded="false">
+              <span aria-hidden="true">☰</span>
+            </button>
+            <div class="breadcrumbs"><span>LinkQR</span><span class="breadcrumb-separator" aria-hidden="true">/</span><strong id="breadcrumb-current">Inicio</strong></div>
+          </div>
+          <div class="header-right">
+            <span class="header-status"><span aria-hidden="true"></span> Local</span>
+            <button class="help-button" type="button" data-route-link="settings"><span aria-hidden="true">?</span> Ayuda y ajustes</button>
+          </div>
+        </header>
+
+        <main class="main-content" id="main-content" tabindex="-1">
+          <section class="page-view" id="page-view" aria-live="polite" aria-busy="false">
+            <p class="eyebrow">LINKQR · WEB</p>
+            <h1>Tu espacio QR</h1>
+            <p>Un lugar para crear y organizar tus códigos QR.</p>
+          </section>
+        </main>
+
+        <footer class="app-footer">
+          <span>LinkQR <span aria-hidden="true">·</span> Herramientas QR, en un solo lugar.</span>
+          <span class="footer-local"><span aria-hidden="true"></span> Espacio local</span>
+        </footer>
+      </div>
+    </div>
   </body>
 </html>
