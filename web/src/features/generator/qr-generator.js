@@ -1,5 +1,6 @@
 import QRCode from "qrcode";
 import { addHistoryRecord } from "../history/history-store.js";
+import { consumeGeneratorDraft } from "./generator-draft.js";
 import { MAX_QR_PAYLOAD_BYTES, validateQrInput, validateQrOptions } from "./validation.js";
 
 let activeController = null;
@@ -419,6 +420,12 @@ export function initQrGenerator() {
     }
   }, { signal });
 
+  const draftResult = consumeGeneratorDraft();
+  if (draftResult.ok && draftResult.draft) {
+    typeSelect.value = draftResult.draft.kind;
+    payloadField.value = draftResult.draft.content;
+    statusElement.textContent = "Contenido cargado desde el historial. Revísalo y genera el QR cuando esté listo.";
+  }
   updateContentType();
   updateCounter();
   updateCustomizationFeedback();

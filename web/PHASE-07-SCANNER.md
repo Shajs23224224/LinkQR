@@ -12,7 +12,7 @@ Leer códigos QR desde una cámara disponible o desde una imagen raster local, m
 - Importación de imágenes PNG, JPEG, WebP, GIF, BMP y AVIF de hasta 10 MB. Las imágenes SVG se rechazan.
 - Resultado de texto presentado con `textContent` y sin ejecutar su contenido. Solo se ofrece un enlace clicable para URLs HTTP/HTTPS válidas que no incluyan credenciales; se abre en una pestaña con `noopener noreferrer`.
 - Acción para copiar el contenido leído y estado accesible para lector de pantalla.
-- La decodificación ocurre en el navegador; no se almacena el resultado ni se sube la imagen.
+- La decodificación ocurre en el navegador; el contenido leído se guarda en el historial local de la Fase 8 y la imagen no se sube al servidor.
 
 ## Requisitos de plataforma
 
@@ -24,4 +24,4 @@ Desde `web/`, ejecutar `npm run check`, `npm test` y `npm run build`. Las prueba
 
 ## Límites
 
-El escáner lee códigos QR; no implementa decodificación general de códigos de barras. La calidad, el enfoque, la iluminación y el recorte de la imagen influyen en la detección. El resultado todavía no se añade al historial: esa persistencia se reserva para la Fase 8.
+El escáner lee códigos QR; no implementa decodificación general de códigos de barras. La calidad, el enfoque, la iluminación y el recorte de la imagen influyen en la detección. El resultado se guarda en el historial local de la Fase 8. No hay sincronización en la nube; el historial permanece en el navegador actual.

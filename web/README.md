@@ -53,6 +53,6 @@ La publicación se construye desde `web/` y se despliega mediante el workflow `.
 
 ## Estado funcional
 
-- **Implementado:** panel y navegación; generación QR personalizada con descarga PNG; lectura por cámara e imagen; historial local, búsqueda, favoritos, copia y eliminación de registros.
+- **Implementado:** panel y navegación; generación QR personalizada con descarga PNG; lectura por cámara e imagen; historial local, búsqueda, filtros, favoritos, copia, eliminación y reutilización de registros en el generador.
 - **Pendiente:** cuenta, sincronización entre dispositivos y PWA.
 - La aplicación nunca recibe la clave administrativa del backend en el cliente web.

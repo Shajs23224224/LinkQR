@@ -11,6 +11,11 @@ import {
   loadHistory,
   toggleHistoryFavorite,
 } from "../src/features/history/history-store.js";
+import {
+  GENERATOR_DRAFT_STORAGE_KEY,
+  consumeGeneratorDraft,
+  saveGeneratorDraft,
+} from "../src/features/generator/generator-draft.js";
 
 
 test("rejects empty text", () => {
@@ -204,4 +209,34 @@ test("handles corrupt, unavailable, and invalid history data", () => {
   assert.equal(loadHistory(null).ok, false);
   assert.equal(addHistoryRecord({ source: "invalid", kind: "text", content: "x" }, storage).ok, false);
   assert.equal(addHistoryRecord({ source: "generated", kind: "text", content: " " }, storage).ok, false);
+});
+
+
+test("sends a valid history record to the generator once", () => {
+  const storage = new MemoryStorage();
+  const saved = saveGeneratorDraft({ kind: "url", content: "https://example.com/a b" }, storage);
+  assert.equal(saved.ok, true);
+  assert.deepEqual(saved.draft, { kind: "url", content: "https://example.com/a%20b" });
+  const consumed = consumeGeneratorDraft(storage);
+  assert.equal(consumed.ok, true);
+  assert.deepEqual(consumed.draft, saved.draft);
+  assert.equal(consumeGeneratorDraft(storage).draft, null);
+  assert.equal(storage.getItem(GENERATOR_DRAFT_STORAGE_KEY), null);
+});
+
+test("rejects invalid or oversized generator drafts", () => {
+  const storage = new MemoryStorage();
+  assert.equal(saveGeneratorDraft({ kind: "url", content: "javascript:alert(1)" }, storage).ok, false);
+  assert.equal(saveGeneratorDraft({ kind: "text", content: "x".repeat(MAX_QR_PAYLOAD_BYTES + 1) }, storage).ok, false);
+  assert.equal(saveGeneratorDraft({ kind: "unknown", content: "hello" }, storage).ok, false);
+  assert.equal(storage.getItem(GENERATOR_DRAFT_STORAGE_KEY), null);
+});
+
+test("discards corrupted generator drafts without repeatedly loading them", () => {
+  const storage = new MemoryStorage();
+  storage.setItem(GENERATOR_DRAFT_STORAGE_KEY, "{");
+  const result = consumeGeneratorDraft(storage);
+  assert.equal(result.ok, false);
+  assert.equal(result.draft, null);
+  assert.equal(storage.getItem(GENERATOR_DRAFT_STORAGE_KEY), null);
 });

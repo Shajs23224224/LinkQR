@@ -1,4 +1,6 @@
 import "./history.css";
+import { MAX_QR_PAYLOAD_BYTES } from "../generator/validation.js";
+import { saveGeneratorDraft } from "../generator/generator-draft.js";
 import {
   clearHistory,
   deleteHistoryRecord,
@@ -91,6 +93,9 @@ function renderRecord(record) {
   favorite.setAttribute("aria-pressed", String(record.favorite));
   favorite.setAttribute("aria-label", record.favorite ? "Quitar de favoritos" : "Añadir a favoritos");
   actions.append(favorite, actionButton("Copiar", "copy", record.id));
+  if (new TextEncoder().encode(record.content).byteLength <= MAX_QR_PAYLOAD_BYTES) {
+    actions.append(actionButton("Recrear QR", "regenerate", record.id, "history-regenerate-button"));
+  }
 
   const url = safeHttpUrl(record.content);
   if (url) {
@@ -208,6 +213,15 @@ export function initHistoryPage({ favoritesOnly = false } = {}) {
       const result = deleteHistoryRecord(id);
       say(result.ok ? "Registro eliminado." : result.error);
       render();
+      return;
+    }
+    if (action === "regenerate") {
+      const data = loadHistory();
+      const record = data.ok ? data.items.find((item) => item.id === id) : null;
+      if (!record) { say("El registro ya no está disponible."); render(); return; }
+      const draft = saveGeneratorDraft({ kind: record.kind, content: record.content });
+      if (!draft.ok) { say(draft.error); return; }
+      window.location.hash = "/generator";
       return;
     }
     if (action === "copy") {
