@@ -2,6 +2,16 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { MAX_QR_PAYLOAD_BYTES, MIN_QR_CONTRAST_RATIO, getContrastRatio, validateQrInput, validateQrOptions } from "../src/features/generator/validation.js";
 import { MAX_SCANNER_IMAGE_BYTES, classifyScannedValue, validateScannerImage } from "../src/features/scanner/scanner-validation.js";
+import {
+  HISTORY_STORAGE_KEY,
+  MAX_HISTORY_ITEMS,
+  addHistoryRecord,
+  clearHistory,
+  deleteHistoryRecord,
+  loadHistory,
+  toggleHistoryFavorite,
+} from "../src/features/history/history-store.js";
+
 
 test("rejects empty text", () => {
   const result = validateQrInput("   ", "text");
@@ -136,4 +146,62 @@ test("keeps non-HTTP protocols and embedded credentials as inert text", () => {
     assert.equal(result.url, null);
     assert.equal(result.text, value);
   }
+});
+
+
+class MemoryStorage {
+  values = new Map();
+  getItem(key) { return this.values.has(key) ? this.values.get(key) : null; }
+  setItem(key, value) { this.values.set(key, String(value)); }
+  removeItem(key) { this.values.delete(key); }
+}
+
+test("persists generated and scanned QR records", () => {
+  const storage = new MemoryStorage();
+  const generated = addHistoryRecord({ source: "generated", kind: "url", content: "https://example.com" }, storage);
+  const scanned = addHistoryRecord({ source: "scanned", kind: "text", content: "texto desde cámara" }, storage);
+  assert.equal(generated.ok, true);
+  assert.equal(scanned.ok, true);
+  const state = loadHistory(storage);
+  assert.equal(state.ok, true);
+  assert.equal(state.items.length, 2);
+  assert.equal(state.items[0].id, scanned.record.id);
+  assert.equal(state.items[1].id, generated.record.id);
+  assert.ok(storage.getItem(HISTORY_STORAGE_KEY));
+});
+
+test("toggles favorites and deletes individual records", () => {
+  const storage = new MemoryStorage();
+  const record = addHistoryRecord({ source: "generated", kind: "text", content: "LinkQR" }, storage).record;
+  const favorited = toggleHistoryFavorite(record.id, storage);
+  assert.equal(favorited.ok, true);
+  assert.equal(favorited.favorite, true);
+  assert.equal(loadHistory(storage).items[0].favorite, true);
+  const unfavorited = toggleHistoryFavorite(record.id, storage);
+  assert.equal(unfavorited.favorite, false);
+  assert.equal(deleteHistoryRecord(record.id, storage).ok, true);
+  assert.equal(loadHistory(storage).items.length, 0);
+});
+
+test("caps history length and supports clearing all records", () => {
+  const storage = new MemoryStorage();
+  for (let i = 0; i < MAX_HISTORY_ITEMS + 4; i += 1) {
+    assert.equal(addHistoryRecord({ source: "generated", kind: "text", content: "record-" + i }, storage).ok, true);
+  }
+  assert.equal(loadHistory(storage).items.length, MAX_HISTORY_ITEMS);
+  assert.equal(clearHistory(storage).ok, true);
+  assert.equal(loadHistory(storage).items.length, 0);
+});
+
+test("handles corrupt, unavailable, and invalid history data", () => {
+  const storage = new MemoryStorage();
+  storage.setItem(HISTORY_STORAGE_KEY, "{");
+  assert.equal(loadHistory(storage).ok, false);
+  const recovered = addHistoryRecord({ source: "scanned", kind: "text", content: "recovered" }, storage);
+  assert.equal(recovered.ok, true);
+  assert.match(recovered.warning, /formato válido/);
+  assert.equal(loadHistory(storage).items.length, 1);
+  assert.equal(loadHistory(null).ok, false);
+  assert.equal(addHistoryRecord({ source: "invalid", kind: "text", content: "x" }, storage).ok, false);
+  assert.equal(addHistoryRecord({ source: "generated", kind: "text", content: " " }, storage).ok, false);
 });
