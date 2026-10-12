@@ -12,7 +12,7 @@ export function validateQrInput(value, kind = "text") {
     return { ok: false, error: "Selecciona un tipo de contenido válido." };
   }
 
-  const payload = kind === "url" ? value.trim() : value;
+  let payload = kind === "url" ? value.trim() : value;
 
   if (!payload.trim()) {
     return { ok: false, error: EMPTY_ERROR };
@@ -41,6 +41,8 @@ export function validateQrInput(value, kind = "text") {
         error: "La dirección debe usar HTTP o HTTPS y no puede contener credenciales.",
       };
     }
+
+    payload = parsedUrl.href;
   }
 
   const bytes = new TextEncoder().encode(payload).byteLength;
