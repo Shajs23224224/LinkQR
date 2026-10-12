@@ -48,3 +48,9 @@ test("rejects unknown content types", () => {
   const result = validateQrInput("anything", "email");
   assert.equal(result.ok, false);
 });
+
+test("normalizes spaces inside a URL path before encoding", () => {
+  const result = validateQrInput("https://example.com/a b", "url");
+  assert.equal(result.ok, true);
+  assert.equal(result.payload, "https://example.com/a%20b");
+});
