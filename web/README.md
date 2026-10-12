@@ -46,9 +46,10 @@ La publicación se construye desde `web/` y se despliega mediante el workflow `.
 - [Fase 3 — Sistema visual responsive](./DESIGN-SYSTEM.md)
 - [Fase 4 — Navegación y panel](./PHASE-04-NAVIGATION.md)
 - [Fase 5 — Generación y validación QR](./PHASE-05-QR-GENERATOR.md)
+- [Fase 6 — Personalización y exportación](./PHASE-06-CUSTOMIZATION-EXPORT.md)
 
 ## Estado funcional
 
-- **Implementado:** panel y navegación; generación local de QR para URLs HTTP/HTTPS y texto libre con vista previa.
-- **Pendiente:** personalización y exportación de QR, escáner, historial persistente, favoritos, cuenta, sincronización y PWA.
+- **Implementado:** panel y navegación; generación local de QR para URLs HTTP/HTTPS y texto libre; personalización de colores, tamaño y margen; validación de contraste; descarga PNG.
+- **Pendiente:** escáner, historial persistente, favoritos, cuenta, sincronización y PWA.
 - La aplicación nunca recibe la clave administrativa del backend en el cliente web.

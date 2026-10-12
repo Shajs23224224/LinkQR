@@ -790,3 +790,122 @@ h1 { margin: 0.5rem 0 0.45rem; font-size: clamp(1.8rem, 3vw, 2.4rem); font-weigh
     padding: 0.55rem 0.3rem;
   }
 }
+
+
+/* Phase 6 — QR customization and PNG export */
+.qr-customization {
+  min-width: 0;
+  margin: 1rem 0 0;
+  padding: 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-medium);
+  background: #fcfcff;
+}
+
+.qr-customization legend {
+  padding: 0 0.35rem;
+  color: var(--color-ink);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.qr-color-grid,
+.qr-options-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.qr-customization .form-field {
+  min-width: 0;
+  margin: 0.25rem 0 0;
+}
+
+.qr-color-control {
+  display: flex;
+  min-width: 0;
+  min-height: 44px;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-small);
+  background: #fff;
+}
+
+.qr-color-control input[type="color"] {
+  width: 42px;
+  height: 34px;
+  flex: 0 0 42px;
+  padding: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.qr-color-value {
+  overflow: hidden;
+  color: var(--color-ink-soft);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+}
+
+.qr-options-grid {
+  margin-top: 0.75rem;
+}
+
+.qr-customization-help,
+.qr-contrast-status {
+  margin: 0.65rem 0 0;
+  color: var(--color-muted);
+  font-size: 0.7rem;
+  line-height: 1.55;
+}
+
+.qr-contrast-status {
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.55rem;
+  background: var(--color-success-soft);
+  color: var(--color-success);
+  font-weight: 700;
+}
+
+.qr-contrast-status.is-invalid {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.qr-customization [aria-invalid="true"] {
+  outline: 2px solid #dc2626;
+  outline-offset: 2px;
+}
+
+.qr-download-button {
+  display: inline-flex;
+  min-width: 210px;
+  justify-content: center;
+  align-items: center;
+  gap: 0.45rem;
+  text-align: center;
+}
+
+.qr-result-meta {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 420px) {
+  .qr-color-grid,
+  .qr-options-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .qr-result-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .qr-download-button {
+    width: 100%;
+  }
+}

@@ -20,8 +20,8 @@ const routeDefinitions = {
   generator: {
     label: "Crear QR",
     title: "Generador QR",
-    phase: "Fase 5",
-    description: "Genera códigos QR reales a partir de una dirección web o texto.",
+    phase: "Fase 6",
+    description: "Genera, personaliza y descarga códigos QR PNG con controles de contraste.",
   },
   scanner: {
     label: "Escáner",

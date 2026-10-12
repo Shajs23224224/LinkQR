@@ -1,5 +1,5 @@
 import QRCode from "qrcode";
-import { MAX_QR_PAYLOAD_BYTES, validateQrInput } from "./validation.js";
+import { MAX_QR_PAYLOAD_BYTES, validateQrInput, validateQrOptions } from "./validation.js";
 
 let activeController = null;
 let generationSequence = 0;
@@ -51,6 +51,50 @@ export function renderQrGenerator() {
             </div>
           </div>
 
+          <fieldset class="qr-customization" aria-describedby="qr-customization-help qr-contrast-status">
+            <legend>Personaliza el diseño</legend>
+            <div class="qr-color-grid">
+              <div class="form-field">
+                <label for="qr-dark-color">Color del patrón</label>
+                <div class="qr-color-control">
+                  <input id="qr-dark-color" name="darkColor" type="color" value="#111827" />
+                  <output class="qr-color-value" id="qr-dark-color-value">#111827</output>
+                </div>
+              </div>
+              <div class="form-field">
+                <label for="qr-light-color">Color del fondo</label>
+                <div class="qr-color-control">
+                  <input id="qr-light-color" name="lightColor" type="color" value="#FFFFFF" />
+                  <output class="qr-color-value" id="qr-light-color-value">#FFFFFF</output>
+                </div>
+              </div>
+            </div>
+            <div class="qr-options-grid">
+              <div class="form-field">
+                <label for="qr-size">Tamaño PNG</label>
+                <select id="qr-size" name="size">
+                  <option value="192">192 × 192 px</option>
+                  <option value="256">256 × 256 px</option>
+                  <option value="320" selected>320 × 320 px</option>
+                  <option value="384">384 × 384 px</option>
+                  <option value="512">512 × 512 px</option>
+                  <option value="640">640 × 640 px</option>
+                  <option value="768">768 × 768 px</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label for="qr-margin">Margen blanco</label>
+                <select id="qr-margin" name="margin">
+                  <option value="4" selected>4 módulos (recomendado)</option>
+                  <option value="6">6 módulos</option>
+                  <option value="8">8 módulos</option>
+                </select>
+              </div>
+            </div>
+            <p class="qr-customization-help" id="qr-customization-help">El margen crea un área despejada alrededor del patrón. Cuatro módulos es la opción recomendada para facilitar el escaneo.</p>
+            <p class="qr-contrast-status" id="qr-contrast-status" role="status" aria-live="polite">Contraste mínimo recomendado: 4.5:1.</p>
+          </fieldset>
+
           <p class="generator-error" id="qr-generator-error" role="alert" hidden></p>
 
           <div class="generator-actions">
@@ -93,9 +137,13 @@ export function renderQrGenerator() {
           <div class="qr-result-meta">
             <span><strong id="qr-result-kind">URL</strong><small>Tipo</small></span>
             <span><strong id="qr-result-bytes">0 bytes</strong><small>Contenido UTF-8</small></span>
-            <span><strong>Nivel L</strong><small>Corrección de errores</small></span>
+            <span><strong id="qr-result-size">320 × 320 px</strong><small>Tamaño PNG</small></span>
+            <span><strong id="qr-result-margin">4 módulos</strong><small>Margen blanco</small></span>
           </div>
-          <p class="qr-export-note">La personalización y descarga del archivo se incorporarán en la Fase 6.</p>
+          <a id="qr-download-button" class="button button-primary qr-download-button" href="#" download="linkqr.png">
+            <span aria-hidden="true">↓</span> Descargar PNG
+          </a>
+          <p class="qr-export-note">El archivo se genera en este navegador. No se envía al servidor.</p>
         </div>
       </section>
     </div>
@@ -130,6 +178,16 @@ export function initQrGenerator() {
   const resultPayload = document.querySelector("#qr-result-payload");
   const resultKind = document.querySelector("#qr-result-kind");
   const resultBytes = document.querySelector("#qr-result-bytes");
+  const resultSize = document.querySelector("#qr-result-size");
+  const resultMargin = document.querySelector("#qr-result-margin");
+  const darkColorField = document.querySelector("#qr-dark-color");
+  const lightColorField = document.querySelector("#qr-light-color");
+  const darkColorValue = document.querySelector("#qr-dark-color-value");
+  const lightColorValue = document.querySelector("#qr-light-color-value");
+  const sizeSelect = document.querySelector("#qr-size");
+  const marginSelect = document.querySelector("#qr-margin");
+  const contrastStatus = document.querySelector("#qr-contrast-status");
+  const downloadButton = document.querySelector("#qr-download-button");
 
   if (
     !(form instanceof HTMLFormElement) ||
@@ -145,7 +203,17 @@ export function initQrGenerator() {
     !(emptyState instanceof HTMLElement) ||
     !(resultPanel instanceof HTMLElement) ||
     !(previewImage instanceof HTMLImageElement) ||
-    !(resultPayload instanceof HTMLParagraphElement)
+    !(resultPayload instanceof HTMLParagraphElement) ||
+    !(resultSize instanceof HTMLSpanElement) ||
+    !(resultMargin instanceof HTMLSpanElement) ||
+    !(darkColorField instanceof HTMLInputElement) ||
+    !(lightColorField instanceof HTMLInputElement) ||
+    !(darkColorValue instanceof HTMLOutputElement) ||
+    !(lightColorValue instanceof HTMLOutputElement) ||
+    !(sizeSelect instanceof HTMLSelectElement) ||
+    !(marginSelect instanceof HTMLSelectElement) ||
+    !(contrastStatus instanceof HTMLParagraphElement) ||
+    !(downloadButton instanceof HTMLAnchorElement)
   ) {
     return;
   }
@@ -159,6 +227,7 @@ export function initQrGenerator() {
   function clearResult(message = "") {
     generationSequence += 1;
     previewImage.removeAttribute("src");
+    downloadButton.removeAttribute("href");
     resultPanel.hidden = true;
     emptyState.hidden = false;
     statusElement.textContent = message;
@@ -167,7 +236,46 @@ export function initQrGenerator() {
   function clearError() {
     errorElement.hidden = true;
     errorElement.textContent = "";
-    payloadField.removeAttribute("aria-invalid");
+    [payloadField, darkColorField, lightColorField, sizeSelect, marginSelect]
+      .forEach((control) => control.removeAttribute("aria-invalid"));
+  }
+
+  function updateCustomizationFeedback() {
+    darkColorValue.textContent = darkColorField.value.toUpperCase();
+    lightColorValue.textContent = lightColorField.value.toUpperCase();
+
+    const validation = validateQrOptions({
+      dark: darkColorField.value,
+      light: lightColorField.value,
+      width: sizeSelect.value,
+      margin: marginSelect.value,
+    });
+
+    if (validation.ok) {
+      contrastStatus.textContent = "Contraste " + validation.contrastRatio.toFixed(2) +
+        ":1. Tamaño y margen válidos.";
+      contrastStatus.classList.remove("is-invalid");
+      [darkColorField, lightColorField, sizeSelect, marginSelect]
+        .forEach((control) => control.removeAttribute("aria-invalid"));
+    } else {
+      contrastStatus.textContent = validation.error;
+      contrastStatus.classList.add("is-invalid");
+      const focusTargets = {
+        dark: darkColorField,
+        light: lightColorField,
+        width: sizeSelect,
+        margin: marginSelect,
+      };
+      focusTargets[validation.field]?.setAttribute("aria-invalid", "true");
+    }
+  }
+
+  function onCustomizationChange() {
+    clearError();
+    updateCustomizationFeedback();
+    if (!resultPanel.hidden) {
+      clearResult("La personalización cambió. Genera de nuevo para actualizar el código QR.");
+    }
   }
 
   function updateContentType() {
@@ -187,6 +295,11 @@ export function initQrGenerator() {
     updateContentType();
     clearResult("El tipo de contenido cambió. Genera un nuevo código para actualizar la vista previa.");
   }, { signal });
+
+  darkColorField.addEventListener("input", onCustomizationChange, { signal });
+  lightColorField.addEventListener("input", onCustomizationChange, { signal });
+  sizeSelect.addEventListener("change", onCustomizationChange, { signal });
+  marginSelect.addEventListener("change", onCustomizationChange, { signal });
 
   payloadField.addEventListener("input", () => {
     clearError();
@@ -221,11 +334,35 @@ export function initQrGenerator() {
       return;
     }
 
+    const optionsValidation = validateQrOptions({
+      dark: darkColorField.value,
+      light: lightColorField.value,
+      width: sizeSelect.value,
+      margin: marginSelect.value,
+    });
+    if (!optionsValidation.ok) {
+      errorElement.textContent = optionsValidation.error;
+      errorElement.hidden = false;
+      contrastStatus.textContent = optionsValidation.error;
+      contrastStatus.classList.add("is-invalid");
+      const focusTargets = {
+        dark: darkColorField,
+        light: lightColorField,
+        width: sizeSelect,
+        margin: marginSelect,
+      };
+      const focusTarget = focusTargets[optionsValidation.field];
+      focusTarget?.setAttribute("aria-invalid", "true");
+      focusTarget?.focus();
+      return;
+    }
+
     const currentSequence = ++generationSequence;
     generateButton.disabled = true;
-    typeSelect.disabled = true;
-    payloadField.disabled = true;
-    clearButton.disabled = true;
+    const generationControls = [
+      typeSelect, payloadField, clearButton, darkColorField, lightColorField, sizeSelect, marginSelect,
+    ];
+    generationControls.forEach((control) => { control.disabled = true; });
     generateButton.setAttribute("aria-busy", "true");
     generateButton.textContent = "Generando…";
     form.setAttribute("aria-busy", "true");
@@ -233,24 +370,30 @@ export function initQrGenerator() {
     try {
       const dataUrl = await QRCode.toDataURL(validation.payload, {
         errorCorrectionLevel: "L",
-        margin: 4,
-        width: 320,
+        margin: optionsValidation.margin,
+        width: optionsValidation.width,
         color: {
-          dark: "#111827",
-          light: "#FFFFFF",
+          dark: optionsValidation.dark,
+          light: optionsValidation.light,
         },
       });
 
       if (currentSequence !== generationSequence || signal.aborted) return;
 
       previewImage.src = dataUrl;
+      previewImage.width = optionsValidation.width;
+      previewImage.height = optionsValidation.width;
+      downloadButton.href = dataUrl;
+      downloadButton.download = "linkqr-" + validation.kind + "-" + optionsValidation.width + "px.png";
       resultTitle.textContent = validation.kind === "url" ? "Código QR de URL" : "Código QR de texto";
       resultPayload.textContent = validation.payload.length > 180
         ? `${validation.payload.slice(0, 177)}…`
         : validation.payload;
       resultPayload.title = validation.payload;
       resultKind.textContent = validation.kind === "url" ? "URL" : "Texto";
-      resultBytes.textContent = `${validation.bytes.toLocaleString()} bytes`;
+      resultBytes.textContent = validation.bytes.toLocaleString() + " bytes";
+      resultSize.textContent = optionsValidation.width + " × " + optionsValidation.width + " px";
+      resultMargin.textContent = optionsValidation.margin + " módulos";
       resultPanel.hidden = false;
       emptyState.hidden = true;
       statusElement.textContent = "Código QR generado correctamente en este navegador.";
@@ -263,9 +406,7 @@ export function initQrGenerator() {
     } finally {
       if (currentSequence === generationSequence && !signal.aborted) {
         generateButton.disabled = false;
-        typeSelect.disabled = false;
-        payloadField.disabled = false;
-        clearButton.disabled = false;
+        generationControls.forEach((control) => { control.disabled = false; });
         generateButton.removeAttribute("aria-busy");
         generateButton.innerHTML = '<span aria-hidden="true">▦</span> Generar código QR <span aria-hidden="true">→</span>';
         form.removeAttribute("aria-busy");
@@ -275,4 +416,5 @@ export function initQrGenerator() {
 
   updateContentType();
   updateCounter();
+  updateCustomizationFeedback();
 }

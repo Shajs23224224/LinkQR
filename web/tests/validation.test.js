@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { MAX_QR_PAYLOAD_BYTES, validateQrInput } from "../src/features/generator/validation.js";
+import { MAX_QR_PAYLOAD_BYTES, MIN_QR_CONTRAST_RATIO, getContrastRatio, validateQrInput, validateQrOptions } from "../src/features/generator/validation.js";
 
 test("rejects empty text", () => {
   const result = validateQrInput("   ", "text");
@@ -53,4 +53,53 @@ test("normalizes spaces inside a URL path before encoding", () => {
   const result = validateQrInput("https://example.com/a b", "url");
   assert.equal(result.ok, true);
   assert.equal(result.payload, "https://example.com/a%20b");
+});
+
+
+test("computes WCAG-style contrast ratios for valid hex colors", () => {
+  assert.ok(getContrastRatio("#111827", "#FFFFFF") > MIN_QR_CONTRAST_RATIO);
+  assert.ok(getContrastRatio("#777777", "#FFFFFF") < MIN_QR_CONTRAST_RATIO);
+  assert.equal(getContrastRatio("red", "#FFFFFF"), null);
+});
+
+test("accepts default QR appearance with scanner-friendly contrast", () => {
+  const result = validateQrOptions();
+  assert.equal(result.ok, true);
+  assert.equal(result.dark, "#111827");
+  assert.equal(result.light, "#FFFFFF");
+  assert.equal(result.width, 320);
+  assert.equal(result.margin, 4);
+  assert.ok(result.contrastRatio >= MIN_QR_CONTRAST_RATIO);
+});
+
+test("normalizes custom colors and numeric display options", () => {
+  const result = validateQrOptions({
+    dark: "#123456",
+    light: "#FFFFFF",
+    width: "512",
+    margin: "8",
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.dark, "#123456");
+  assert.equal(result.width, 512);
+  assert.equal(result.margin, 8);
+});
+
+test("rejects low contrast and reversed light/dark colors", () => {
+  const lowContrast = validateQrOptions({ dark: "#777777", light: "#FFFFFF" });
+  assert.equal(lowContrast.ok, false);
+  assert.equal(lowContrast.field, "light");
+  assert.match(lowContrast.error, /contraste/i);
+
+  const reversed = validateQrOptions({ dark: "#FFFFFF", light: "#000000" });
+  assert.equal(reversed.ok, false);
+  assert.equal(reversed.field, "dark");
+  assert.match(reversed.error, /más oscuro/i);
+});
+
+test("rejects invalid colors, sizes, and margins", () => {
+  assert.equal(validateQrOptions({ dark: "rebeccapurple" }).ok, false);
+  assert.equal(validateQrOptions({ light: "#FFFFF" }).ok, false);
+  assert.equal(validateQrOptions({ width: 333 }).field, "width");
+  assert.equal(validateQrOptions({ margin: 0 }).field, "margin");
 });
