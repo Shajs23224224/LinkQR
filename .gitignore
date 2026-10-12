@@ -17,3 +17,17 @@ local.properties
 # OS
 .DS_Store
 Thumbs.db
+
+# Environment files and local secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*service-account*.json
+credentials*.json
+
+# Local databases and runtime artifacts
+*.db
+*.db-shm
+*.db-wal
