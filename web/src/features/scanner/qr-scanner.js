@@ -90,8 +90,9 @@ function stopCameraElements(controlsOverride = null) {
     // The stream may already have ended because the browser revoked access.
   }
 
-  if (activeVideoElement?.srcObject instanceof MediaStream) {
-    activeVideoElement.srcObject.getTracks().forEach((track) => track.stop());
+  const stream = activeVideoElement?.srcObject;
+  if (stream && typeof stream === "object" && "getTracks" in stream && typeof stream.getTracks === "function") {
+    stream.getTracks().forEach((track) => track.stop());
   }
   if (activeVideoElement) {
     activeVideoElement.pause();
