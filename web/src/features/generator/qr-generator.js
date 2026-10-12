@@ -204,8 +204,8 @@ export function initQrGenerator() {
     !(resultPanel instanceof HTMLElement) ||
     !(previewImage instanceof HTMLImageElement) ||
     !(resultPayload instanceof HTMLParagraphElement) ||
-    !(resultSize instanceof HTMLSpanElement) ||
-    !(resultMargin instanceof HTMLSpanElement) ||
+    !(resultSize instanceof HTMLElement) ||
+    !(resultMargin instanceof HTMLElement) ||
     !(darkColorField instanceof HTMLInputElement) ||
     !(lightColorField instanceof HTMLInputElement) ||
     !(darkColorValue instanceof HTMLOutputElement) ||
