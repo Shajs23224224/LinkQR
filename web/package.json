@@ -5,17 +5,19 @@
   "description": "LinkQR web client using native HTML, CSS and JavaScript modules.",
   "type": "module",
   "engines": {
-    "node": "^20.19.0 || >=22.12.0"
+    "node": ">=24.0.0"
   },
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "check": "node --check src/main.js && node --check src/config.js && node --check src/features/generator/validation.js && node --check src/features/generator/qr-generator.js && node --check vite.config.js",
+    "check": "node --check src/main.js && node --check src/config.js && node --check src/features/generator/validation.js && node --check src/features/generator/qr-generator.js && node --check src/features/scanner/scanner-validation.js && node --check src/features/scanner/qr-scanner.js && node --check vite.config.js",
     "test": "node --test"
   },
   "dependencies": {
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "@zxing/browser": "^0.2.1",
+    "@zxing/library": "^0.23.0"
   },
   "devDependencies": {
     "vite": "^8.3.4"

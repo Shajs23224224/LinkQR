@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { MAX_QR_PAYLOAD_BYTES, MIN_QR_CONTRAST_RATIO, getContrastRatio, validateQrInput, validateQrOptions } from "../src/features/generator/validation.js";
+import { MAX_SCANNER_IMAGE_BYTES, classifyScannedValue, validateScannerImage } from "../src/features/scanner/scanner-validation.js";
 
 test("rejects empty text", () => {
   const result = validateQrInput("   ", "text");
@@ -102,4 +103,37 @@ test("rejects invalid colors, sizes, and margins", () => {
   assert.equal(validateQrOptions({ light: "#FFFFF" }).ok, false);
   assert.equal(validateQrOptions({ width: 333 }).field, "width");
   assert.equal(validateQrOptions({ margin: 0 }).field, "margin");
+});
+
+
+test("accepts supported raster images up to 10 MB", () => {
+  const result = validateScannerImage({ type: "image/png", size: MAX_SCANNER_IMAGE_BYTES, name: "qr.png" });
+  assert.equal(result.ok, true);
+});
+
+test("rejects empty, unsupported, and oversized scanner images", () => {
+  assert.equal(validateScannerImage(null).ok, false);
+  assert.equal(validateScannerImage({ type: "image/svg+xml", size: 250 }).ok, false);
+  assert.equal(validateScannerImage({ type: "image/jpeg", size: 0 }).ok, false);
+  const tooLarge = validateScannerImage({ type: "image/webp", size: MAX_SCANNER_IMAGE_BYTES + 1 });
+  assert.equal(tooLarge.ok, false);
+  assert.match(tooLarge.error, /10 MB/);
+});
+
+test("classifies HTTP and HTTPS QR contents as safe links", () => {
+  assert.deepEqual(classifyScannedValue("https://example.com/path"), {
+    text: "https://example.com/path",
+    isHttpUrl: true,
+    url: "https://example.com/path",
+  });
+  assert.equal(classifyScannedValue(" http://example.com ").isHttpUrl, true);
+});
+
+test("keeps non-HTTP protocols and embedded credentials as inert text", () => {
+  for (const value of ["javascript:alert(1)", "data:text/html,hello", "mailto:user@example.com", "https://user:pass@example.com", "ordinary text"]) {
+    const result = classifyScannedValue(value);
+    assert.equal(result.isHttpUrl, false);
+    assert.equal(result.url, null);
+    assert.equal(result.text, value);
+  }
 });

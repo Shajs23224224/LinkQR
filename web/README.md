@@ -7,11 +7,12 @@ Cliente web de LinkQR, independiente de la aplicación Android y del backend.
 - HTML5 semántico, CSS responsive y JavaScript con módulos ES.
 - Vite para servidor de desarrollo y empaquetado estático.
 - `qrcode` para generar QR reales en el navegador.
+- `@zxing/browser` y `@zxing/library` para lectura QR desde cámara o imagen.
 - Sin framework de interfaz.
 
 ## Requisitos
 
-Node.js `^20.19.0 || >=22.12.0` y npm.
+Node.js `>=24.0.0` y npm.
 
 ## Ejecutar
 
@@ -47,9 +48,10 @@ La publicación se construye desde `web/` y se despliega mediante el workflow `.
 - [Fase 4 — Navegación y panel](./PHASE-04-NAVIGATION.md)
 - [Fase 5 — Generación y validación QR](./PHASE-05-QR-GENERATOR.md)
 - [Fase 6 — Personalización y exportación](./PHASE-06-CUSTOMIZATION-EXPORT.md)
+- [Fase 7 — Escáner QR](./PHASE-07-SCANNER.md)
 
 ## Estado funcional
 
-- **Implementado:** panel y navegación; generación local de QR para URLs HTTP/HTTPS y texto libre; personalización de colores, tamaño y margen; validación de contraste; descarga PNG.
-- **Pendiente:** escáner, historial persistente, favoritos, cuenta, sincronización y PWA.
+- **Implementado:** panel y navegación; generación QR local con personalización y descarga PNG; lectura QR desde cámara e imágenes raster locales; copia de resultados y apertura segura de enlaces HTTP/HTTPS.
+- **Pendiente:** historial persistente, favoritos, cuenta, sincronización y PWA.
 - La aplicación nunca recibe la clave administrativa del backend en el cliente web.

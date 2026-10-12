@@ -1,5 +1,10 @@
 import { appConfig } from "./config.js";
 import {
+  destroyQrScanner,
+  initQrScanner,
+  renderQrScanner,
+} from "./features/scanner/qr-scanner.js";
+import {
   destroyQrGenerator,
   initQrGenerator,
   renderQrGenerator,
@@ -27,7 +32,7 @@ const routeDefinitions = {
     label: "Escáner",
     title: "Escáner QR",
     phase: "Fase 7",
-    description: "Esta sección incorporará la lectura de códigos QR mediante la cámara o una imagen compatible.",
+    description: "Lee códigos QR con la cámara trasera o desde una imagen, copia el contenido y abre enlaces HTTP/HTTPS detectados.",
   },
   history: {
     label: "Historial",
@@ -95,7 +100,7 @@ function renderHome() {
           <span class="quick-icon" aria-hidden="true">⌗</span>
           <span class="quick-card-copy"><strong>Escanear un QR</strong><small>Abre la herramienta de lectura</small></span>
           <span class="quick-arrow" aria-hidden="true">↗</span>
-          <span class="quick-card-state">Fase 7</span>
+          <span class="quick-card-state">Disponible</span>
         </a>
         <a class="quick-card" href="#/history">
           <span class="quick-icon" aria-hidden="true">◷</span>
@@ -131,7 +136,7 @@ function renderHome() {
         </article>
       </div>
     </section>
-    <p class="page-footnote"><span aria-hidden="true">ⓘ</span> La generación de QR ya funciona en este navegador. La lectura y el guardado se incorporarán en fases posteriores.</p>
+    <p class="page-footnote"><span aria-hidden="true">ⓘ</span> La generación y lectura local de códigos QR están disponibles. El historial y los favoritos llegarán en fases posteriores.</p>
   `;
 }
 
@@ -178,11 +183,14 @@ function renderRoute({ moveFocus = false } = {}) {
   const routeName = getCurrentRoute();
   const route = routeDefinitions[routeName];
   destroyQrGenerator();
+  destroyQrScanner();
   view.innerHTML = routeName === "home"
     ? route.render()
     : routeName === "generator"
       ? renderQrGenerator()
-      : renderPlaceholder(route);
+      : routeName === "scanner"
+        ? renderQrScanner()
+        : renderPlaceholder(route);
 
   document.querySelectorAll("[data-route]").forEach((link) => {
     if (!(link instanceof HTMLAnchorElement)) return;
@@ -196,6 +204,7 @@ function renderRoute({ moveFocus = false } = {}) {
   });
 
   if (routeName === "generator") initQrGenerator();
+  if (routeName === "scanner") initQrScanner();
 
   if (breadcrumbCurrent) breadcrumbCurrent.textContent = route.label;
   document.title = `${route.label} · ${appConfig.appName}`;
