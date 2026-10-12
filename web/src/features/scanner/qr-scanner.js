@@ -1,4 +1,5 @@
 import { BrowserQRCodeReader } from "@zxing/browser";
+import { addHistoryRecord } from "../history/history-store.js";
 import {
   classifyScannedValue,
   MAX_SCANNER_IMAGE_BYTES,
@@ -196,6 +197,7 @@ export function initQrScanner() {
     resultContent.hidden = false;
     resultEmpty.hidden = true;
     copyButton.disabled = false;
+    const saved = addHistoryRecord({ source: "scanned", kind: classified.isHttpUrl ? "url" : "text", content: classified.text });
 
     if (classified.isHttpUrl) {
       openLink.href = classified.url;
@@ -204,6 +206,7 @@ export function initQrScanner() {
       openLink.removeAttribute("href");
       openLink.hidden = true;
     }
+    return saved;
   }
 
   function stopCameraWithStatus(message) {
@@ -249,9 +252,9 @@ export function initQrScanner() {
         } catch {
           // The detected result is already available.
         }
-        showResult(result.getText());
+        const saved = showResult(result.getText());
         cameraStatus.textContent = "Código QR detectado. La cámara se ha detenido.";
-        resultStatus.textContent = "Lectura completada. Puedes copiar el contenido o abrir el enlace si es HTTP/HTTPS.";
+        resultStatus.textContent = saved.ok ? "Lectura completada y guardada en el historial local." : "Lectura completada, pero no se pudo guardar: " + saved.error;
       });
 
       if (sequence !== scanSequence || signal.aborted) {
@@ -306,8 +309,8 @@ export function initQrScanner() {
       const result = await reader.decodeFromImageUrl(objectUrl);
       if (sequence !== scanSequence || signal.aborted) return;
 
-      showResult(result.getText());
-      resultStatus.textContent = "QR leído correctamente desde la imagen.";
+      const saved = showResult(result.getText());
+      resultStatus.textContent = saved.ok ? "QR leído y guardado en el historial local." : "QR leído correctamente, pero no se pudo guardar: " + saved.error;
       cameraStatus.textContent = "Escaneo desde archivo completado.";
     } catch {
       if (sequence !== scanSequence || signal.aborted) return;
