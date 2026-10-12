@@ -1,4 +1,5 @@
 import { appConfig } from "./config.js";
+import { destroyHistoryPage, initHistoryPage, renderHistoryPage } from "./features/history/history-page.js";
 import {
   destroyQrScanner,
   initQrScanner,
@@ -38,13 +39,13 @@ const routeDefinitions = {
     label: "Historial",
     title: "Historial de códigos",
     phase: "Fase 8",
-    description: "Aquí podrás consultar los códigos guardados, revisar detalles y gestionar registros locales.",
+    description: "Busca, copia, marca como favorito y elimina los QR generados o escaneados en este navegador.",
   },
   favorites: {
     label: "Favoritos",
     title: "Tus favoritos",
     phase: "Fase 8",
-    description: "Esta vista reunirá los códigos que marques como favoritos cuando el almacenamiento esté implementado.",
+    description: "Consulta tus QR favoritos y accede rápidamente a su contenido guardado localmente.",
   },
   settings: {
     label: "Ajustes",
@@ -106,7 +107,7 @@ function renderHome() {
           <span class="quick-icon" aria-hidden="true">◷</span>
           <span class="quick-card-copy"><strong>Ver historial</strong><small>Consulta códigos guardados</small></span>
           <span class="quick-arrow" aria-hidden="true">↗</span>
-          <span class="quick-card-state">Fase 8</span>
+          <span class="quick-card-state">Disponible</span>
         </a>
       </div>
     </section>
@@ -125,8 +126,8 @@ function renderHome() {
         <article class="overview-card">
           <span class="overview-icon overview-icon-green" aria-hidden="true">◉</span>
           <span class="overview-label">Almacenamiento</span>
-          <strong class="overview-value">No conectado</strong>
-          <span class="overview-foot">Persistencia local en Fase 8</span>
+          <strong class="overview-value">Historial local</strong>
+          <span class="overview-foot">Datos guardados en este navegador</span>
         </article>
         <article class="overview-card">
           <span class="overview-icon overview-icon-amber" aria-hidden="true">↗</span>
@@ -136,7 +137,7 @@ function renderHome() {
         </article>
       </div>
     </section>
-    <p class="page-footnote"><span aria-hidden="true">ⓘ</span> La generación y lectura local de códigos QR están disponibles. El historial y los favoritos llegarán en fases posteriores.</p>
+    <p class="page-footnote"><span aria-hidden="true">ⓘ</span> Genera y escanea QR, guárdalos en el historial local y marca como favoritos los que quieras consultar más tarde.</p>
   `;
 }
 
@@ -184,13 +185,18 @@ function renderRoute({ moveFocus = false } = {}) {
   const route = routeDefinitions[routeName];
   destroyQrGenerator();
   destroyQrScanner();
+  destroyHistoryPage();
   view.innerHTML = routeName === "home"
     ? route.render()
     : routeName === "generator"
       ? renderQrGenerator()
       : routeName === "scanner"
         ? renderQrScanner()
-        : renderPlaceholder(route);
+        : routeName === "history"
+          ? renderHistoryPage()
+          : routeName === "favorites"
+            ? renderHistoryPage({ favoritesOnly: true })
+            : renderPlaceholder(route);
 
   document.querySelectorAll("[data-route]").forEach((link) => {
     if (!(link instanceof HTMLAnchorElement)) return;
@@ -205,6 +211,8 @@ function renderRoute({ moveFocus = false } = {}) {
 
   if (routeName === "generator") initQrGenerator();
   if (routeName === "scanner") initQrScanner();
+  if (routeName === "history") initHistoryPage();
+  if (routeName === "favorites") initHistoryPage({ favoritesOnly: true });
 
   if (breadcrumbCurrent) breadcrumbCurrent.textContent = route.label;
   document.title = `${route.label} · ${appConfig.appName}`;
