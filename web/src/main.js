@@ -88,7 +88,7 @@ function renderHome() {
     <section class="section-block" aria-labelledby="tools-title">
       <div class="section-heading">
         <div><p class="section-index">TU CAJA DE HERRAMIENTAS</p><h2 id="tools-title">Accesos rápidos</h2></div>
-        <span class="section-note">Funciones en preparación</span>
+        <span class="section-note">Herramientas principales disponibles</span>
       </div>
       <div class="quick-grid">
         <a class="quick-card quick-card-primary" href="#/generator">
