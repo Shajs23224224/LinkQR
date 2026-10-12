@@ -1,4 +1,5 @@
 import QRCode from "qrcode";
+import { addHistoryRecord } from "../history/history-store.js";
 import { MAX_QR_PAYLOAD_BYTES, validateQrInput, validateQrOptions } from "./validation.js";
 
 let activeController = null;
@@ -396,7 +397,11 @@ export function initQrGenerator() {
       resultMargin.textContent = optionsValidation.margin + " módulos";
       resultPanel.hidden = false;
       emptyState.hidden = true;
-      statusElement.textContent = "Código QR generado correctamente en este navegador.";
+      const saved = addHistoryRecord({ source: "generated", kind: validation.kind, content: validation.payload });
+      statusElement.textContent = saved.ok
+        ? "Código QR generado y guardado en el historial local."
+        : "QR generado correctamente, pero no se pudo guardar en el historial: " + saved.error;
+      if (saved.ok && saved.warning) statusElement.textContent += " " + saved.warning;
     } catch (error) {
       if (currentSequence !== generationSequence || signal.aborted) return;
       errorElement.textContent = "No se pudo generar el código. Comprueba el contenido e inténtalo con un texto más corto.";
