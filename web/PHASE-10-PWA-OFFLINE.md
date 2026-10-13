@@ -6,7 +6,7 @@ Hacer que la web pueda instalarse como aplicación y abrir su shell y recursos e
 
 ## Implementación
 
-- Manifiesto `manifest.webmanifest` con nombre, tema, modo standalone, iconos SVG de 192 y 512 px, URL de inicio, ámbito relativo y accesos directos al generador, escáner e historial.
+- Manifiesto `manifest.webmanifest` con nombre, tema, modo standalone, iconos PNG estándar de 192 y 512 px (con alternativas SVG), URL de inicio, ámbito relativo y accesos directos al generador, escáner e historial.
 - Registro del service worker con rutas calculadas desde el manifiesto para respetar el prefijo `/LinkQR/` de GitHub Pages y la raíz de desarrollo.
 - Caché versionada del shell y los recursos JS/CSS y de los iconos; navegación con estrategia network-first y fallback offline; archivos estáticos con estrategia cache-first.
 - Limpieza de cachés antiguas durante la activación. El service worker solo intercepta peticiones GET del mismo origen y dentro de su ámbito.

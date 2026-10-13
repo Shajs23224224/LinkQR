@@ -79,9 +79,21 @@ test("manifest declares a standalone app with relative shortcuts and icons", asy
 
 test("service worker implements versioned cache and offline navigation fallback", async () => {
   const worker = await readFile(publicFile("sw.js"), "utf8");
-  assert.match(worker, /linkqr-pwa-v1/);
+  assert.match(worker, /linkqr-pwa-v2/);
   assert.match(worker, /addEventListener\("install"/);
   assert.match(worker, /addEventListener\("activate"/);
   assert.match(worker, /addEventListener\("fetch"/);
   assert.match(worker, /caches\.match\(OFFLINE_URL\)/);
+});
+
+test("manifest bitmap icons are valid PNG files at the declared dimensions", async () => {
+  const manifest = JSON.parse(await readFile(publicFile("manifest.webmanifest"), "utf8"));
+  for (const expected of [{ src: "linkqr-192.png", size: 192 }, { src: "linkqr-512.png", size: 512 }]) {
+    const icon = manifest.icons.find((item) => item.src.endsWith(expected.src));
+    assert.ok(icon, "missing manifest icon: " + expected.src);
+    const data = await readFile(publicFile("icons/" + expected.src));
+    assert.equal(data.toString("ascii", 1, 4), "PNG");
+    assert.equal(data.readUInt32BE(16), expected.size);
+    assert.equal(data.readUInt32BE(20), expected.size);
+  }
 });
