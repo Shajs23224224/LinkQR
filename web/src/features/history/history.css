@@ -136,3 +136,35 @@
   .history-record-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .history-record-actions .button { justify-content: center; text-align: center; }
 }
+
+
+/* Phase 9 — portable history backups */
+.history-backup-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.2rem;
+  margin: 0 0 1rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-large);
+  background: var(--color-surface);
+}
+.history-backup-copy { min-width: 180px; }
+.history-backup-copy h2 { margin: 0; font-size: .9rem; font-weight: 800; }
+.history-backup-copy p { max-width: 460px; margin: .35rem 0 0; color: var(--color-muted); font-size: .74rem; line-height: 1.55; }
+.history-backup-actions { display: flex; align-items: end; flex-wrap: wrap; gap: .55rem; }
+.history-backup-actions .button { min-height: 42px; white-space: nowrap; }
+.history-import-label { cursor: pointer; }
+.history-import-mode-field { min-width: 200px; margin: 0; }
+.history-import-mode-field label { display: block; margin-bottom: .3rem; color: var(--color-ink-soft); font-size: .7rem; font-weight: 700; }
+@media (max-width: 760px) {
+  .history-backup-panel { align-items: stretch; flex-direction: column; gap: .9rem; }
+  .history-backup-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .history-import-mode-field { grid-column: 1 / -1; }
+  .history-backup-actions .button { justify-content: center; text-align: center; }
+}
+@media (max-width: 460px) {
+  .history-backup-actions { grid-template-columns: minmax(0, 1fr); }
+  .history-import-mode-field { grid-column: auto; }
+}

@@ -3,9 +3,13 @@ import { MAX_QR_PAYLOAD_BYTES } from "../generator/validation.js";
 import { saveGeneratorDraft } from "../generator/generator-draft.js";
 import {
   clearHistory,
+  createHistoryBackup,
   deleteHistoryRecord,
+  importHistoryBackup,
   loadHistory,
+  MAX_HISTORY_BACKUP_BYTES,
   toggleHistoryFavorite,
+  validateHistoryBackup,
 } from "./history-store.js";
 
 let controller = null;
@@ -17,9 +21,11 @@ export function renderHistoryPage({ favoritesOnly = false } = {}) {
     : "Consulta y organiza los QR generados o escaneados en este navegador.";
   const filter = favoritesOnly ? "" : '<div class="form-field history-filter-field"><label for="history-source-filter">Origen</label><select id="history-source-filter" class="history-source-filter"><option value="all">Todos</option><option value="generated">Generados</option><option value="scanned">Escaneados</option></select></div>';
   const clear = favoritesOnly ? "" : '<button class="button button-secondary history-clear-button" id="history-clear-button" type="button">Borrar todo</button>';
+  const backupTools = favoritesOnly ? "" : '<section class="history-backup-panel" aria-label="Copias de seguridad"><div class="history-backup-copy"><h2>Copias de seguridad</h2><p>Guarda una copia JSON o restaura registros desde un archivo exportado por LinkQR.</p></div><div class="history-backup-actions"><button class="button button-secondary" id="history-export-button" type="button">Exportar JSON</button><label class="button button-secondary history-import-label" for="history-import-file">Importar JSON<input id="history-import-file" type="file" accept=".json,application/json" hidden /></label><div class="form-field history-import-mode-field"><label for="history-import-mode">Al importar</label><select id="history-import-mode" class="history-source-filter"><option value="merge">Combinar con historial</option><option value="replace">Reemplazar historial</option></select></div></div></section>';
 
   return [
     '<div class="page-heading-row"><div><p class="eyebrow"><span class="eyebrow-dot"></span> TU ESPACIO LOCAL</p><h1 tabindex="-1">' + title + '</h1><p class="page-description">' + description + '</p></div><span class="local-pill"><span aria-hidden="true"></span> Solo este navegador</span></div>',
+    backupTools,
     '<section class="history-page-panel" aria-label="' + title + '"><div class="history-toolbar">',
     '<div class="form-field history-search-field"><label for="history-search">Buscar por contenido</label><input id="history-search" class="history-search" type="search" placeholder="Buscar URL o texto…" autocomplete="off" /></div>',
     filter, clear, '</div>',
@@ -125,6 +131,9 @@ export function initHistoryPage({ favoritesOnly = false } = {}) {
   const search = document.querySelector("#history-search");
   const filter = document.querySelector("#history-source-filter");
   const clear = document.querySelector("#history-clear-button");
+  const exportButton = document.querySelector("#history-export-button");
+  const importFile = document.querySelector("#history-import-file");
+  const importMode = document.querySelector("#history-import-mode");
   const storageMessage = document.querySelector("#history-storage-message");
   const summary = document.querySelector("#history-summary");
   const status = document.querySelector("#history-action-status");
@@ -183,6 +192,55 @@ export function initHistoryPage({ favoritesOnly = false } = {}) {
   window.addEventListener("linkqr:history-updated", render, { signal });
   window.addEventListener("storage", (event) => {
     if (event.key === null || event.key === "linkqr.history.v1") render();
+  }, { signal });
+
+  exportButton?.addEventListener("click", () => {
+    const result = createHistoryBackup();
+    if (!result.ok) { say(result.error); return; }
+    try {
+      const blob = new Blob([JSON.stringify(result.backup, null, 2)], { type: "application/json;charset=utf-8" });
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = "linkqr-backup-" + new Date().toISOString().slice(0, 10) + ".json";
+      anchor.hidden = true;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      say("Copia JSON descargada. Guárdala en un lugar seguro.");
+    } catch {
+      say("No se pudo generar la descarga de la copia JSON.");
+    }
+  }, { signal });
+
+  importFile?.addEventListener("change", async () => {
+    const file = importFile.files?.[0];
+    if (!file) return;
+    try {
+      if (file.size > MAX_HISTORY_BACKUP_BYTES) {
+        say("El archivo supera el límite de 8 MB.");
+        return;
+      }
+      const raw = await file.text();
+      const validation = validateHistoryBackup(raw);
+      if (!validation.ok) { say(validation.error); return; }
+      const mode = importMode?.value === "replace" ? "replace" : "merge";
+      if (mode === "replace" && !window.confirm("¿Reemplazar todo el historial local por esta copia? Esta acción no se puede deshacer.")) {
+        say("Importación cancelada; el historial no cambió.");
+        return;
+      }
+      const result = importHistoryBackup(validation.backup, { mode });
+      if (!result.ok) { say(result.error); return; }
+      say(mode === "replace"
+        ? "Copia restaurada: " + result.importedCount + " registros."
+        : "Importación completada: " + result.importedCount + " registros nuevos añadidos.");
+      render();
+    } catch {
+      say("No se pudo leer o importar el archivo. El historial no cambió.");
+    } finally {
+      importFile.value = "";
+    }
   }, { signal });
 
   clear?.addEventListener("click", () => {

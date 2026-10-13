@@ -7,9 +7,14 @@ import {
   MAX_HISTORY_ITEMS,
   addHistoryRecord,
   clearHistory,
+  createHistoryBackup,
   deleteHistoryRecord,
+  importHistoryBackup,
   loadHistory,
   toggleHistoryFavorite,
+  validateHistoryBackup,
+  HISTORY_BACKUP_FORMAT,
+  MAX_HISTORY_BACKUP_BYTES,
 } from "../src/features/history/history-store.js";
 import {
   GENERATOR_DRAFT_STORAGE_KEY,
@@ -239,4 +244,74 @@ test("discards corrupted generator drafts without repeatedly loading them", () =
   assert.equal(result.ok, false);
   assert.equal(result.draft, null);
   assert.equal(storage.getItem(GENERATOR_DRAFT_STORAGE_KEY), null);
+});
+
+
+test("exports a portable, versioned backup of local history", () => {
+  const storage = new MemoryStorage();
+  addHistoryRecord({ source: "generated", kind: "url", content: "https://example.com" }, storage);
+  const exported = createHistoryBackup(storage);
+  assert.equal(exported.ok, true);
+  assert.equal(exported.backup.format, HISTORY_BACKUP_FORMAT);
+  assert.equal(exported.backup.version, 1);
+  assert.equal(exported.backup.items.length, 1);
+  assert.equal(exported.backup.items[0].content, "https://example.com");
+});
+
+test("merges backup records by unique ID and keeps local conflicts", () => {
+  const storage = new MemoryStorage();
+  const local = addHistoryRecord({ source: "generated", kind: "text", content: "local value" }, storage).record;
+  const imported = {
+    format: HISTORY_BACKUP_FORMAT,
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    items: [
+      { ...local, content: "incoming conflicting content" },
+      { id: "from-backup", source: "scanned", kind: "text", content: "new record", createdAt: new Date().toISOString(), favorite: true },
+    ],
+  };
+  const result = importHistoryBackup(imported, { mode: "merge" }, storage);
+  assert.equal(result.ok, true);
+  assert.equal(result.importedCount, 1);
+  const state = loadHistory(storage);
+  assert.equal(state.items.length, 2);
+  assert.ok(state.items.some((item) => item.id === local.id && item.content === "local value"));
+  assert.ok(state.items.some((item) => item.id === "from-backup" && item.favorite === true));
+});
+
+test("replaces history only when explicitly requested and accepts empty backups", () => {
+  const storage = new MemoryStorage();
+  addHistoryRecord({ source: "generated", kind: "text", content: "old record" }, storage);
+  const emptyBackup = { format: HISTORY_BACKUP_FORMAT, version: 1, items: [] };
+  assert.equal(importHistoryBackup(emptyBackup, { mode: "merge" }, storage).ok, true);
+  assert.equal(loadHistory(storage).items.length, 1);
+  const replaced = importHistoryBackup(emptyBackup, { mode: "replace" }, storage);
+  assert.equal(replaced.ok, true);
+  assert.equal(replaced.importedCount, 0);
+  assert.equal(loadHistory(storage).items.length, 0);
+});
+
+test("rejects malformed, unsupported, duplicate, oversized and invalid backups atomically", () => {
+  const storage = new MemoryStorage();
+  addHistoryRecord({ source: "generated", kind: "text", content: "keep me" }, storage);
+  const before = storage.getItem(HISTORY_STORAGE_KEY);
+  assert.equal(validateHistoryBackup("{").ok, false);
+  assert.equal(validateHistoryBackup({ format: "other", version: 1, items: [] }).ok, false);
+  assert.equal(validateHistoryBackup({ format: HISTORY_BACKUP_FORMAT, version: 99, items: [] }).ok, false);
+  assert.equal(validateHistoryBackup("x".repeat(MAX_HISTORY_BACKUP_BYTES + 1)).ok, false);
+  const invalidRecord = { id: "bad", source: "generated", kind: "text", content: "", createdAt: new Date().toISOString(), favorite: false };
+  assert.equal(importHistoryBackup({ format: HISTORY_BACKUP_FORMAT, version: 1, items: [invalidRecord] }, { mode: "replace" }, storage).ok, false);
+  const duplicate = { id: "same-id", source: "generated", kind: "text", content: "x", createdAt: new Date().toISOString(), favorite: false };
+  assert.equal(validateHistoryBackup({ format: HISTORY_BACKUP_FORMAT, version: 1, items: [duplicate, duplicate] }).ok, false);
+  assert.equal(storage.getItem(HISTORY_STORAGE_KEY), before);
+});
+
+test("fails safe when merging into an unreadable local history", () => {
+  const storage = new MemoryStorage();
+  storage.setItem(HISTORY_STORAGE_KEY, "{");
+  const backup = { format: HISTORY_BACKUP_FORMAT, version: 1, items: [] };
+  const merged = importHistoryBackup(backup, { mode: "merge" }, storage);
+  assert.equal(merged.ok, false);
+  assert.equal(storage.getItem(HISTORY_STORAGE_KEY), "{");
+  assert.equal(importHistoryBackup(backup, { mode: "replace" }, storage).ok, true);
 });

@@ -2,6 +2,9 @@ export const HISTORY_STORAGE_KEY = "linkqr.history.v1";
 export const HISTORY_SCHEMA_VERSION = 1;
 export const MAX_HISTORY_ITEMS = 200;
 export const MAX_HISTORY_CONTENT_LENGTH = 8192;
+export const HISTORY_BACKUP_FORMAT = "linkqr-history-backup";
+export const HISTORY_BACKUP_VERSION = 1;
+export const MAX_HISTORY_BACKUP_BYTES = 8 * 1024 * 1024;
 
 const VALID_SOURCES = new Set(["generated", "scanned"]);
 const VALID_KINDS = new Set(["url", "text"]);
@@ -123,4 +126,115 @@ export function clearHistory(storageOverride) {
   const storage = resolveStorage(storageOverride);
   if (!storage) return { ok: false, error: "El almacenamiento local no está disponible." };
   return persist([], storage);
+}
+
+
+/**
+ * Builds a portable, versioned JSON backup from the current local history.
+ */
+export function createHistoryBackup(storageOverride) {
+  const current = loadHistory(storageOverride);
+  if (!current.ok) return { ok: false, error: current.error || "No se pudo leer el historial para crear la copia." };
+  return {
+    ok: true,
+    backup: {
+      format: HISTORY_BACKUP_FORMAT,
+      version: HISTORY_BACKUP_VERSION,
+      exportedAt: new Date().toISOString(),
+      items: current.items,
+    },
+  };
+}
+
+/**
+ * Parses and validates a backup completely before allowing any storage changes.
+ * The returned records contain only the fields understood by this schema.
+ */
+export function validateHistoryBackup(input) {
+  let raw;
+  try {
+    raw = typeof input === "string" ? input : JSON.stringify(input);
+  } catch {
+    return { ok: false, error: "La copia no se puede convertir a JSON." };
+  }
+  if (typeof raw !== "string" || !raw.trim()) {
+    return { ok: false, error: "El archivo de copia está vacío." };
+  }
+  if (new TextEncoder().encode(raw).byteLength > MAX_HISTORY_BACKUP_BYTES) {
+    return { ok: false, error: "La copia supera el límite de 8 MB." };
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { ok: false, error: "El archivo no contiene JSON válido." };
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) ||
+      parsed.format !== HISTORY_BACKUP_FORMAT || parsed.version !== HISTORY_BACKUP_VERSION ||
+      !Array.isArray(parsed.items)) {
+    return { ok: false, error: "El formato o la versión de la copia no son compatibles con LinkQR." };
+  }
+  if (parsed.items.length > MAX_HISTORY_ITEMS) {
+    return { ok: false, error: "La copia contiene más de " + MAX_HISTORY_ITEMS + " registros." };
+  }
+
+  const ids = new Set();
+  const items = [];
+  for (const item of parsed.items) {
+    if (!isValidRecord(item) || item.id.length > 128 || !item.content.trim()) {
+      return { ok: false, error: "La copia contiene un registro inválido. No se importó ningún dato." };
+    }
+    if (ids.has(item.id)) {
+      return { ok: false, error: "La copia contiene identificadores duplicados. No se importó ningún dato." };
+    }
+    ids.add(item.id);
+    items.push({
+      id: item.id,
+      source: item.source,
+      kind: item.kind,
+      content: item.content,
+      createdAt: item.createdAt,
+      favorite: item.favorite,
+    });
+  }
+  return { ok: true, backup: { format: HISTORY_BACKUP_FORMAT, version: HISTORY_BACKUP_VERSION, exportedAt: parsed.exportedAt, items } };
+}
+
+/**
+ * Imports a validated backup using "merge" (default) or "replace" mode.
+ * Merge preserves existing records on ID conflicts and appends only new IDs.
+ */
+export function importHistoryBackup(input, { mode = "merge" } = {}, storageOverride) {
+  if (mode !== "merge" && mode !== "replace") {
+    return { ok: false, error: "El modo de importación no es válido." };
+  }
+  const validation = validateHistoryBackup(input);
+  if (!validation.ok) return validation;
+
+  const storage = resolveStorage(storageOverride);
+  if (!storage) return { ok: false, error: "El almacenamiento local no está disponible." };
+  const current = loadHistory(storage);
+  if (mode === "merge" && !current.ok) {
+    return { ok: false, error: current.error || "No se pudo leer el historial actual. Elige reemplazarlo solo si deseas restaurar la copia." };
+  }
+
+  const incoming = validation.backup.items;
+  let nextItems;
+  let importedCount;
+  if (mode === "replace") {
+    nextItems = incoming;
+    importedCount = incoming.length;
+  } else {
+    const existing = current.items;
+    const existingIds = new Set(existing.map((item) => item.id));
+    const additions = incoming.filter((item) => !existingIds.has(item.id));
+    nextItems = [...existing, ...additions]
+      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+      .slice(0, MAX_HISTORY_ITEMS);
+    importedCount = Math.max(0, nextItems.length - existing.length);
+  }
+
+  const result = persist(nextItems, storage);
+  return { ...result, importedCount: result.ok ? importedCount : 0, mode };
 }

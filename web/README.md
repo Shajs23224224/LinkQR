@@ -50,9 +50,10 @@ La publicación se construye desde `web/` y se despliega mediante el workflow `.
 - [Fase 6 — Personalización y exportación](./PHASE-06-CUSTOMIZATION-EXPORT.md)
 - [Fase 7 — Escáner QR](./PHASE-07-SCANNER.md)
 - [Fase 8 — Historial y favoritos](./PHASE-08-HISTORY-FAVORITES.md)
+- [Fase 9 — Copias de seguridad e importación](./PHASE-09-BACKUP-RESTORE.md)
 
 ## Estado funcional
 
-- **Implementado:** panel y navegación; generación QR personalizada con descarga PNG; lectura por cámara e imagen; historial local, búsqueda, filtros, favoritos, copia, eliminación y reutilización de registros en el generador.
+- **Implementado:** panel y navegación; generación QR personalizada con descarga PNG; lectura por cámara e imagen; historial local, búsqueda, filtros, favoritos, copia, eliminación, reutilización en el generador y copias JSON importables/exportables.
 - **Pendiente:** cuenta, sincronización entre dispositivos y PWA.
 - La aplicación nunca recibe la clave administrativa del backend en el cliente web.
