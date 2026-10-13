@@ -1,4 +1,4 @@
-const CACHE_NAME = "linkqr-pwa-v2";
+const CACHE_NAME = "linkqr-pwa-v3";
 const APP_BASE = self.registration.scope;
 const APP_BASE_PATH = new URL(APP_BASE).pathname;
 const OFFLINE_URL = new URL("offline.html", APP_BASE).href;

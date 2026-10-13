@@ -1,6 +1,7 @@
 import QRCode from "qrcode";
 import { addHistoryRecord } from "../history/history-store.js";
 import { consumeGeneratorDraft } from "./generator-draft.js";
+import { loadSettings } from "../settings/settings-store.js";
 import { MAX_QR_PAYLOAD_BYTES, validateQrInput, validateQrOptions } from "./validation.js";
 
 let activeController = null;
@@ -220,6 +221,8 @@ export function initQrGenerator() {
     return;
   }
 
+  const preferences = loadSettings().settings;
+
   function updateCounter() {
     const byteLength = new TextEncoder().encode(payloadField.value).byteLength;
     payloadCounter.textContent = `${byteLength.toLocaleString()} / ${MAX_QR_PAYLOAD_BYTES} bytes`;
@@ -312,7 +315,7 @@ export function initQrGenerator() {
   }, { signal });
 
   clearButton.addEventListener("click", () => {
-    typeSelect.value = "url";
+    typeSelect.value = preferences.qr.kind;
     payloadField.value = "";
     clearError();
     updateContentType();
@@ -398,11 +401,16 @@ export function initQrGenerator() {
       resultMargin.textContent = optionsValidation.margin + " módulos";
       resultPanel.hidden = false;
       emptyState.hidden = true;
-      const saved = addHistoryRecord({ source: "generated", kind: validation.kind, content: validation.payload });
-      statusElement.textContent = saved.ok
-        ? "Código QR generado y guardado en el historial local."
-        : "QR generado correctamente, pero no se pudo guardar en el historial: " + saved.error;
-      if (saved.ok && saved.warning) statusElement.textContent += " " + saved.warning;
+      const currentPreferences = loadSettings().settings;
+      if (!currentPreferences.history.saveGenerated) {
+        statusElement.textContent = "Código QR generado correctamente. El guardado automático está desactivado en Ajustes.";
+      } else {
+        const saved = addHistoryRecord({ source: "generated", kind: validation.kind, content: validation.payload });
+        statusElement.textContent = saved.ok
+          ? "Código QR generado y guardado en el historial local."
+          : "QR generado correctamente, pero no se pudo guardar en el historial: " + saved.error;
+        if (saved.ok && saved.warning) statusElement.textContent += " " + saved.warning;
+      }
     } catch (error) {
       if (currentSequence !== generationSequence || signal.aborted) return;
       errorElement.textContent = "No se pudo generar el código. Comprueba el contenido e inténtalo con un texto más corto.";
@@ -419,6 +427,12 @@ export function initQrGenerator() {
       }
     }
   }, { signal });
+
+  typeSelect.value = preferences.qr.kind;
+  darkColorField.value = preferences.qr.dark;
+  lightColorField.value = preferences.qr.light;
+  sizeSelect.value = String(preferences.qr.width);
+  marginSelect.value = String(preferences.qr.margin);
 
   const draftResult = consumeGeneratorDraft();
   if (draftResult.ok && draftResult.draft) {

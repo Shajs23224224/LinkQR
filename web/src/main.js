@@ -1,4 +1,5 @@
 import { appConfig } from "./config.js";
+import { destroySettingsPage, initSettingsPage, renderSettingsPage } from "./features/settings/settings-page.js";
 import { initializePwa } from "./pwa.js";
 import { destroyHistoryPage, initHistoryPage, renderHistoryPage } from "./features/history/history-page.js";
 import {
@@ -52,7 +53,7 @@ const routeDefinitions = {
     label: "Ajustes",
     title: "Ajustes de LinkQR",
     phase: "Fase 11",
-    description: "Esta sección reunirá las preferencias de la aplicación y, más adelante, las opciones de cuenta y sincronización.",
+    description: "Configura los valores predeterminados del generador y decide qué contenido se guarda en el historial local.",
   },
 };
 
@@ -187,6 +188,7 @@ function renderRoute({ moveFocus = false } = {}) {
   destroyQrGenerator();
   destroyQrScanner();
   destroyHistoryPage();
+  destroySettingsPage();
   view.innerHTML = routeName === "home"
     ? route.render()
     : routeName === "generator"
@@ -197,7 +199,9 @@ function renderRoute({ moveFocus = false } = {}) {
           ? renderHistoryPage()
           : routeName === "favorites"
             ? renderHistoryPage({ favoritesOnly: true })
-            : renderPlaceholder(route);
+            : routeName === "settings"
+              ? renderSettingsPage()
+              : renderPlaceholder(route);
 
   document.querySelectorAll("[data-route]").forEach((link) => {
     if (!(link instanceof HTMLAnchorElement)) return;
@@ -214,6 +218,7 @@ function renderRoute({ moveFocus = false } = {}) {
   if (routeName === "scanner") initQrScanner();
   if (routeName === "history") initHistoryPage();
   if (routeName === "favorites") initHistoryPage({ favoritesOnly: true });
+  if (routeName === "settings") initSettingsPage();
 
   if (breadcrumbCurrent) breadcrumbCurrent.textContent = route.label;
   document.title = `${route.label} · ${appConfig.appName}`;

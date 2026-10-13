@@ -52,9 +52,11 @@ La publicación se construye desde `web/` y se despliega mediante el workflow `.
 - [Fase 8 — Historial y favoritos](./PHASE-08-HISTORY-FAVORITES.md)
 - [Fase 9 — Copias de seguridad e importación](./PHASE-09-BACKUP-RESTORE.md)
 - [Fase 10 — PWA instalable y uso sin conexión](./PHASE-10-PWA-OFFLINE.md)
+- [Fase 11 — Ajustes funcionales](./PHASE-11-SETTINGS.md)
 
 ## Estado funcional
 
 - **Implementado:** panel y navegación; generación QR personalizada con descarga PNG; lectura por cámara e imagen; historial local, búsqueda, filtros, favoritos, copia, eliminación, reutilización en el generador y copias JSON importables/exportables y PWA instalable con recursos de la aplicación disponibles sin conexión tras la primera visita.
+- **Implementado:** ajustes locales para valores QR predeterminados y control del guardado automático de historial.
 - **Pendiente:** cuenta y sincronización entre dispositivos.
 - La aplicación nunca recibe la clave administrativa del backend en el cliente web.

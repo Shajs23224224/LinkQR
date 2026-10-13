@@ -1,5 +1,6 @@
 import { BrowserQRCodeReader } from "@zxing/browser";
 import { addHistoryRecord } from "../history/history-store.js";
+import { loadSettings } from "../settings/settings-store.js";
 import {
   classifyScannedValue,
   MAX_SCANNER_IMAGE_BYTES,
@@ -197,7 +198,10 @@ export function initQrScanner() {
     resultContent.hidden = false;
     resultEmpty.hidden = true;
     copyButton.disabled = false;
-    const saved = addHistoryRecord({ source: "scanned", kind: classified.isHttpUrl ? "url" : "text", content: classified.text });
+    const preferences = loadSettings().settings;
+    const saved = preferences.history.saveScanned
+      ? addHistoryRecord({ source: "scanned", kind: classified.isHttpUrl ? "url" : "text", content: classified.text })
+      : { ok: true, skipped: true };
 
     if (classified.isHttpUrl) {
       openLink.href = classified.url;
@@ -254,7 +258,11 @@ export function initQrScanner() {
         }
         const saved = showResult(result.getText());
         cameraStatus.textContent = "Código QR detectado. La cámara se ha detenido.";
-        resultStatus.textContent = saved.ok ? "Lectura completada y guardada en el historial local." : "Lectura completada, pero no se pudo guardar: " + saved.error;
+        resultStatus.textContent = saved.skipped
+          ? "Lectura completada. El guardado automático está desactivado en Ajustes."
+          : saved.ok
+            ? "Lectura completada y guardada en el historial local."
+            : "Lectura completada, pero no se pudo guardar: " + saved.error;
       });
 
       if (sequence !== scanSequence || signal.aborted) {
@@ -310,7 +318,11 @@ export function initQrScanner() {
       if (sequence !== scanSequence || signal.aborted) return;
 
       const saved = showResult(result.getText());
-      resultStatus.textContent = saved.ok ? "QR leído y guardado en el historial local." : "QR leído correctamente, pero no se pudo guardar: " + saved.error;
+      resultStatus.textContent = saved.skipped
+        ? "QR leído correctamente. El guardado automático está desactivado en Ajustes."
+        : saved.ok
+          ? "QR leído y guardado en el historial local."
+          : "QR leído correctamente, pero no se pudo guardar: " + saved.error;
       cameraStatus.textContent = "Escaneo desde archivo completado.";
     } catch {
       if (sequence !== scanSequence || signal.aborted) return;
