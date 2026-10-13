@@ -1156,3 +1156,15 @@ h1 { margin: 0.5rem 0 0.45rem; font-size: clamp(1.8rem, 3vw, 2.4rem); font-weigh
     width: 100%;
   }
 }
+
+
+/* Phase 10 — PWA install action and connection state */
+.help-button[hidden] { display: none; }
+.install-button { border-color: var(--color-border-strong); }
+.install-button > span { background: #eef2ff; color: #4338ca; font-size: 1rem; }
+.header-status.is-offline { color: #92400e; }
+.header-status.is-offline > span:first-child { background: #d97706; }
+@media (max-width: 640px) {
+  .install-button { width: 40px; height: 40px; padding: 0; overflow: hidden; gap: 0; font-size: 0; }
+  .install-button > span { flex-shrink: 0; font-size: 1rem; }
+}

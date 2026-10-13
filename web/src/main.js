@@ -1,4 +1,5 @@
 import { appConfig } from "./config.js";
+import { initializePwa } from "./pwa.js";
 import { destroyHistoryPage, initHistoryPage, renderHistoryPage } from "./features/history/history-page.js";
 import {
   destroyQrScanner,
@@ -268,3 +269,4 @@ if (!window.location.hash) {
   window.history.replaceState(null, "", "#/home");
 }
 renderRoute();
+initializePwa();

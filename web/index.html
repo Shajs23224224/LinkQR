@@ -4,6 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#f8f9fc" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="icon" type="image/svg+xml" href="%BASE_URL%icons/linkqr-192.svg" />
+    <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
     <meta name="description" content="LinkQR: administra tu espacio de códigos QR desde una interfaz clara y responsive." />
     <title>Inicio · LinkQR</title>
     <link rel="stylesheet" href="./src/styles.css" />
@@ -74,7 +79,8 @@
             <div class="breadcrumbs"><span>LinkQR</span><span class="breadcrumb-separator" aria-hidden="true">/</span><strong id="breadcrumb-current">Inicio</strong></div>
           </div>
           <div class="header-right">
-            <span class="header-status"><span aria-hidden="true"></span> Local</span>
+            <button class="help-button install-button" id="install-app" type="button" hidden><span aria-hidden="true">↓</span> Instalar app</button>
+            <span class="header-status" id="connection-status" role="status" aria-live="polite"><span aria-hidden="true"></span><span id="connection-status-label">Local</span></span>
             <button class="help-button" type="button" data-route-link="settings"><span aria-hidden="true">?</span> Ayuda y ajustes</button>
           </div>
         </header>

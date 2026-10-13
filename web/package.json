@@ -11,7 +11,7 @@
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "check": "node --check src/main.js && node --check src/config.js && node --check src/features/generator/validation.js && node --check src/features/generator/generator-draft.js && node --check src/features/generator/qr-generator.js && node --check src/features/scanner/scanner-validation.js && node --check src/features/scanner/qr-scanner.js && node --check src/features/history/history-store.js && node --check src/features/history/history-page.js && node --check vite.config.js",
+    "check": "node --check src/main.js && node --check src/config.js && node --check src/pwa.js && node --check src/features/generator/validation.js && node --check src/features/generator/generator-draft.js && node --check src/features/generator/qr-generator.js && node --check src/features/scanner/scanner-validation.js && node --check src/features/scanner/qr-scanner.js && node --check src/features/history/history-store.js && node --check src/features/history/history-page.js && node --check vite.config.js && node --check public/sw.js",
     "test": "node --test"
   },
   "dependencies": {
