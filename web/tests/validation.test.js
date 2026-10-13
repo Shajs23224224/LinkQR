@@ -315,3 +315,29 @@ test("fails safe when merging into an unreadable local history", () => {
   assert.equal(storage.getItem(HISTORY_STORAGE_KEY), "{");
   assert.equal(importHistoryBackup(backup, { mode: "replace" }, storage).ok, true);
 });
+
+
+test("counts merged records correctly when a full history evicts an older item", () => {
+  const storage = new MemoryStorage();
+  for (let i = 0; i < MAX_HISTORY_ITEMS; i += 1) {
+    assert.equal(addHistoryRecord({ source: "generated", kind: "text", content: "local-" + i }, storage).ok, true);
+  }
+  const newerRecord = {
+    id: "newer-imported-record",
+    source: "scanned",
+    kind: "text",
+    content: "keep this imported record",
+    createdAt: new Date(Date.now() + 86400000).toISOString(),
+    favorite: false,
+  };
+  const result = importHistoryBackup({
+    format: HISTORY_BACKUP_FORMAT,
+    version: 1,
+    items: [newerRecord],
+  }, { mode: "merge" }, storage);
+  assert.equal(result.ok, true);
+  assert.equal(result.importedCount, 1);
+  const finalItems = loadHistory(storage).items;
+  assert.equal(finalItems.length, MAX_HISTORY_ITEMS);
+  assert.ok(finalItems.some((item) => item.id === newerRecord.id));
+});

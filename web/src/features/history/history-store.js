@@ -232,7 +232,8 @@ export function importHistoryBackup(input, { mode = "merge" } = {}, storageOverr
     nextItems = [...existing, ...additions]
       .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
       .slice(0, MAX_HISTORY_ITEMS);
-    importedCount = Math.max(0, nextItems.length - existing.length);
+    const retainedIds = new Set(nextItems.map((item) => item.id));
+    importedCount = additions.filter((item) => retainedIds.has(item.id)).length;
   }
 
   const result = persist(nextItems, storage);
