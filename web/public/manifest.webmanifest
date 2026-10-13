@@ -16,6 +16,18 @@
   ],
   "icons": [
     {
+      "src": "./icons/linkqr-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/linkqr-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
       "src": "./icons/linkqr-192.svg",
       "sizes": "192x192",
       "type": "image/svg+xml",
@@ -36,9 +48,9 @@
       "url": "./#/generator",
       "icons": [
         {
-          "src": "./icons/linkqr-192.svg",
+          "src": "./icons/linkqr-192.png",
           "sizes": "192x192",
-          "type": "image/svg+xml"
+          "type": "image/png"
         }
       ]
     },
@@ -49,9 +61,9 @@
       "url": "./#/scanner",
       "icons": [
         {
-          "src": "./icons/linkqr-192.svg",
+          "src": "./icons/linkqr-192.png",
           "sizes": "192x192",
-          "type": "image/svg+xml"
+          "type": "image/png"
         }
       ]
     },
@@ -62,9 +74,9 @@
       "url": "./#/history",
       "icons": [
         {
-          "src": "./icons/linkqr-192.svg",
+          "src": "./icons/linkqr-192.png",
           "sizes": "192x192",
-          "type": "image/svg+xml"
+          "type": "image/png"
         }
       ]
     }
