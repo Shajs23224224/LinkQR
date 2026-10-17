@@ -239,3 +239,58 @@ export function importHistoryBackup(input, { mode = "merge" } = {}, storageOverr
   const result = persist(nextItems, storage);
   return { ...result, importedCount: result.ok ? importedCount : 0, mode };
 }
+
+
+/**
+ * Set several records to a target favorite state with one localStorage write.
+ * Duplicate IDs are ignored; the result reports how many records changed.
+ */
+export function setHistoryFavorites(recordIds, favorite, storageOverride) {
+  if (!Array.isArray(recordIds) || typeof favorite !== "boolean") {
+    return { ok: false, updatedCount: 0, error: "La selección de favoritos no es válida." };
+  }
+  const ids = [...new Set(recordIds.filter((id) => typeof id === "string" && id.length > 0))];
+  if (!ids.length) return { ok: false, updatedCount: 0, error: "Selecciona al menos un registro." };
+  const storage = resolveStorage(storageOverride);
+  if (!storage) return { ok: false, updatedCount: 0, error: "El almacenamiento local no está disponible." };
+  const current = loadHistory(storage);
+  if (!current.ok) return { ok: false, updatedCount: 0, error: current.error };
+
+  const selected = new Set(ids);
+  let updatedCount = 0;
+  const items = current.items.map((item) => {
+    if (!selected.has(item.id) || item.favorite === favorite) return item;
+    updatedCount += 1;
+    return { ...item, favorite };
+  });
+  if (!updatedCount) {
+    const found = current.items.some((item) => selected.has(item.id));
+    return found
+      ? { ok: true, updatedCount: 0, items: current.items }
+      : { ok: false, updatedCount: 0, error: "No se encontraron los registros seleccionados." };
+  }
+  const result = persist(items, storage);
+  return { ...result, updatedCount: result.ok ? updatedCount : 0 };
+}
+
+/**
+ * Deletes a group of history records in one storage transaction.
+ */
+export function deleteHistoryRecords(recordIds, storageOverride) {
+  if (!Array.isArray(recordIds)) {
+    return { ok: false, deletedCount: 0, error: "La selección de registros no es válida." };
+  }
+  const ids = [...new Set(recordIds.filter((id) => typeof id === "string" && id.length > 0))];
+  if (!ids.length) return { ok: false, deletedCount: 0, error: "Selecciona al menos un registro." };
+  const storage = resolveStorage(storageOverride);
+  if (!storage) return { ok: false, deletedCount: 0, error: "El almacenamiento local no está disponible." };
+  const current = loadHistory(storage);
+  if (!current.ok) return { ok: false, deletedCount: 0, error: current.error };
+
+  const selected = new Set(ids);
+  const items = current.items.filter((item) => !selected.has(item.id));
+  const deletedCount = current.items.length - items.length;
+  if (!deletedCount) return { ok: false, deletedCount: 0, error: "No se encontraron los registros seleccionados." };
+  const result = persist(items, storage);
+  return { ...result, deletedCount: result.ok ? deletedCount : 0 };
+}

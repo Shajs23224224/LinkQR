@@ -5,9 +5,13 @@ import {
   clearHistory,
   createHistoryBackup,
   deleteHistoryRecord,
+  deleteHistoryRecords,
+  HISTORY_BACKUP_FORMAT,
+  HISTORY_BACKUP_VERSION,
   importHistoryBackup,
   loadHistory,
   MAX_HISTORY_BACKUP_BYTES,
+  setHistoryFavorites,
   toggleHistoryFavorite,
   validateHistoryBackup,
 } from "./history-store.js";
@@ -31,6 +35,16 @@ export function renderHistoryPage({ favoritesOnly = false } = {}) {
     filter, clear, '</div>',
     '<p class="history-storage-message" id="history-storage-message" role="status" aria-live="polite" hidden></p>',
     '<div class="history-summary-row"><p id="history-summary" class="history-summary" aria-live="polite"></p><span class="history-local-label">Guardado local</span></div>',
+    '<section class="history-bulk-panel" aria-label="Selección múltiple y acciones masivas">',
+    '<label class="history-select-all"><input id="history-select-all" type="checkbox" /> <span>Seleccionar resultados visibles</span></label>',
+    '<p class="history-selection-count" id="history-selection-count" aria-live="polite">0 seleccionados</p>',
+    '<div class="history-bulk-actions">',
+    '<button class="button button-secondary" id="history-bulk-favorite" type="button" disabled>Marcar favoritos</button>',
+    '<button class="button button-secondary" id="history-bulk-unfavorite" type="button" disabled>Quitar favoritos</button>',
+    '<button class="button button-secondary" id="history-bulk-copy" type="button" disabled>Copiar contenido</button>',
+    '<button class="button button-secondary" id="history-bulk-export" type="button" disabled>Exportar selección JSON</button>',
+    '<button class="button button-secondary history-delete-button" id="history-bulk-delete" type="button" disabled>Eliminar selección</button>',
+    '</div></section>',
     '<p class="history-action-status" id="history-action-status" role="status" aria-live="polite"></p><div class="history-record-list" id="history-record-list"></div>',
     '<div class="history-empty-state" id="history-empty-state" hidden><span class="history-empty-icon" aria-hidden="true">' + (favoritesOnly ? "♡" : "◷") + '</span><h2 id="history-empty-title"></h2><p id="history-empty-description"></p>',
     favoritesOnly ? '<a class="button button-primary" href="#/history">Ver historial completo</a>' : '<a class="button button-primary" href="#/generator">Crear un QR</a>',
@@ -56,10 +70,11 @@ function actionButton(label, action, id, extraClass = "") {
   return button;
 }
 
-function renderRecord(record) {
+function renderRecord(record, selected = false) {
   const card = document.createElement("article");
   card.className = "history-record";
   card.dataset.recordId = record.id;
+  card.classList.toggle("is-selected", selected);
 
   const header = document.createElement("div");
   header.className = "history-record-header";
@@ -81,7 +96,18 @@ function renderRecord(record) {
   date.textContent = Number.isNaN(parsedDate.getTime())
     ? "Fecha desconocida"
     : new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(parsedDate);
-  header.append(tags, date);
+  const selectLabel = document.createElement("label");
+  selectLabel.className = "history-record-select";
+  const selectInput = document.createElement("input");
+  selectInput.type = "checkbox";
+  selectInput.checked = selected;
+  selectInput.dataset.recordSelect = "true";
+  selectInput.dataset.recordId = record.id;
+  selectInput.setAttribute("aria-label", "Seleccionar registro: " + record.content.slice(0, 80));
+  const selectText = document.createElement("span");
+  selectText.textContent = "Seleccionar";
+  selectLabel.append(selectInput, selectText);
+  header.append(selectLabel, tags, date);
 
   const content = document.createElement("p");
   content.className = "history-record-content";
@@ -134,9 +160,18 @@ export function initHistoryPage({ favoritesOnly = false } = {}) {
   const exportButton = document.querySelector("#history-export-button");
   const importFile = document.querySelector("#history-import-file");
   const importMode = document.querySelector("#history-import-mode");
+  const selectAll = document.querySelector("#history-select-all");
+  const selectionCount = document.querySelector("#history-selection-count");
+  const bulkFavorite = document.querySelector("#history-bulk-favorite");
+  const bulkUnfavorite = document.querySelector("#history-bulk-unfavorite");
+  const bulkCopy = document.querySelector("#history-bulk-copy");
+  const bulkExport = document.querySelector("#history-bulk-export");
+  const bulkDelete = document.querySelector("#history-bulk-delete");
   const storageMessage = document.querySelector("#history-storage-message");
   const summary = document.querySelector("#history-summary");
   const status = document.querySelector("#history-action-status");
+  const selectedIds = new Set();
+  let visibleRecords = [];
   const list = document.querySelector("#history-record-list");
   const empty = document.querySelector("#history-empty-state");
   const emptyTitle = document.querySelector("#history-empty-title");
@@ -159,6 +194,8 @@ export function initHistoryPage({ favoritesOnly = false } = {}) {
     storageMessage.classList.toggle("is-error", !data.ok);
 
     const all = data.ok ? data.items : [];
+    const availableIds = new Set(all.map((item) => item.id));
+    for (const id of selectedIds) if (!availableIds.has(id)) selectedIds.delete(id);
     const query = search.value.trim().toLocaleLowerCase();
     const origin = favoritesOnly ? "all" : filter.value;
     const records = all
@@ -166,7 +203,20 @@ export function initHistoryPage({ favoritesOnly = false } = {}) {
       .filter((item) => origin === "all" || item.source === origin)
       .filter((item) => !query || item.content.toLocaleLowerCase().includes(query));
 
-    list.replaceChildren(...records.map(renderRecord));
+    visibleRecords = records;
+    list.replaceChildren(...records.map((item) => renderRecord(item, selectedIds.has(item.id))));
+    const selectedVisibleCount = records.filter((item) => selectedIds.has(item.id)).length;
+    if (selectAll) {
+      selectAll.checked = records.length > 0 && selectedVisibleCount === records.length;
+      selectAll.indeterminate = selectedVisibleCount > 0 && selectedVisibleCount < records.length;
+      selectAll.disabled = records.length === 0;
+    }
+    if (selectionCount) {
+      selectionCount.textContent = selectedIds.size + " seleccionado" + (selectedIds.size === 1 ? "" : "s");
+    }
+    [bulkFavorite, bulkUnfavorite, bulkCopy, bulkExport, bulkDelete].forEach((button) => {
+      if (button instanceof HTMLButtonElement) button.disabled = selectedIds.size === 0;
+    });
     summary.textContent = favoritesOnly
       ? records.length + " favorito" + (records.length === 1 ? "" : "s")
       : records.length + " de " + all.length + " registros";
@@ -189,6 +239,85 @@ export function initHistoryPage({ favoritesOnly = false } = {}) {
   const say = (message) => { status.textContent = message; };
   search.addEventListener("input", render, { signal });
   filter?.addEventListener("change", render, { signal });
+  selectAll?.addEventListener("change", () => {
+    for (const record of visibleRecords) {
+      if (selectAll.checked) selectedIds.add(record.id);
+      else selectedIds.delete(record.id);
+    }
+    render();
+  }, { signal });
+  list.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement) || target.dataset.recordSelect !== "true") return;
+    const id = target.dataset.recordId;
+    if (!id) return;
+    if (target.checked) selectedIds.add(id);
+    else selectedIds.delete(id);
+    render();
+  }, { signal });
+  bulkFavorite?.addEventListener("click", () => {
+    const result = setHistoryFavorites([...selectedIds], true);
+    say(result.ok ? result.updatedCount + " registro(s) marcado(s) como favorito." : result.error);
+    render();
+  }, { signal });
+  bulkUnfavorite?.addEventListener("click", () => {
+    const result = setHistoryFavorites([...selectedIds], false);
+    say(result.ok ? result.updatedCount + " registro(s) retirado(s) de favoritos." : result.error);
+    render();
+  }, { signal });
+  bulkCopy?.addEventListener("click", async () => {
+    const data = loadHistory();
+    if (!data.ok) { say(data.error); return; }
+    const chosen = data.items.filter((item) => selectedIds.has(item.id));
+    if (!chosen.length) { say("No hay registros seleccionados."); render(); return; }
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(chosen.map((item) => item.content).join("\\n\\n"));
+      say("Contenido de " + chosen.length + " registro(s) copiado.");
+    } catch {
+      say("No se pudo copiar la selección automáticamente. Usa Exportar selección JSON para guardarla.");
+    }
+  }, { signal });
+  bulkExport?.addEventListener("click", () => {
+    const data = loadHistory();
+    if (!data.ok) { say(data.error); return; }
+    const items = data.items.filter((item) => selectedIds.has(item.id));
+    if (!items.length) { say("No hay registros seleccionados."); render(); return; }
+    try {
+      const backup = {
+        format: HISTORY_BACKUP_FORMAT,
+        version: HISTORY_BACKUP_VERSION,
+        exportedAt: new Date().toISOString(),
+        items,
+      };
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json;charset=utf-8" });
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = "linkqr-seleccion-" + new Date().toISOString().slice(0, 10) + ".json";
+      anchor.hidden = true;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      say("Selección exportada: " + items.length + " registro(s).");
+    } catch {
+      say("No se pudo generar el archivo JSON de la selección.");
+    }
+  }, { signal });
+  bulkDelete?.addEventListener("click", () => {
+    const ids = [...selectedIds];
+    if (!ids.length) { say("Selecciona al menos un registro."); return; }
+    if (!window.confirm("¿Eliminar " + ids.length + " registro(s) seleccionado(s)? Esta acción no se puede deshacer.")) return;
+    const result = deleteHistoryRecords(ids);
+    if (result.ok) {
+      selectedIds.clear();
+      say("Se eliminaron " + result.deletedCount + " registro(s).");
+    } else {
+      say(result.error);
+    }
+    render();
+  }, { signal });
   window.addEventListener("linkqr:history-updated", render, { signal });
   window.addEventListener("storage", (event) => {
     if (event.key === null || event.key === "linkqr.history.v1") render();

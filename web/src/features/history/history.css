@@ -168,3 +168,60 @@
   .history-backup-actions { grid-template-columns: minmax(0, 1fr); }
   .history-import-mode-field { grid-column: auto; }
 }
+
+
+/* Phase 12 — history selection and bulk actions */
+.history-bulk-panel {
+  display: grid;
+  grid-template-columns: minmax(190px, auto) minmax(110px, auto) 1fr;
+  align-items: center;
+  gap: .7rem 1rem;
+  margin: .85rem 0 1rem;
+  padding: .85rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-medium);
+  background: #fafbff;
+}
+.history-select-all, .history-record-select {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  color: var(--color-ink-soft);
+  font-size: .74rem;
+  font-weight: 720;
+  cursor: pointer;
+}
+.history-select-all input, .history-record-select input {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  flex: 0 0 auto;
+  accent-color: var(--color-brand);
+}
+.history-selection-count { margin: 0; color: var(--color-muted); font-size: .74rem; font-weight: 750; white-space: nowrap; }
+.history-bulk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: .45rem;
+}
+.history-bulk-actions .button { min-height: 38px; padding: .52rem .72rem; font-size: .72rem; }
+.history-bulk-actions .button:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+.history-bulk-actions .history-delete-button { color: #b91c1c; border-color: #fecaca; }
+.history-record.is-selected { border-color: #a5b4fc; box-shadow: 0 0 0 2px rgb(99 102 241 / 9%); }
+.history-record-select { padding-right: .2rem; }
+.history-record-select span { white-space: nowrap; }
+.history-record-header { gap: .7rem; }
+@media (max-width: 920px) {
+  .history-bulk-panel { grid-template-columns: 1fr auto; }
+  .history-bulk-actions { grid-column: 1 / -1; justify-content: flex-start; }
+}
+@media (max-width: 560px) {
+  .history-bulk-panel { grid-template-columns: 1fr; align-items: stretch; }
+  .history-bulk-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .history-bulk-actions .button { justify-content: center; text-align: center; }
+  .history-selection-count { order: 3; }
+  .history-bulk-actions .history-delete-button { grid-column: 1 / -1; }
+  .history-record-header { flex-wrap: wrap; }
+  .history-record-select { width: 100%; }
+}

@@ -9,9 +9,11 @@ import {
   clearHistory,
   createHistoryBackup,
   deleteHistoryRecord,
+  deleteHistoryRecords,
   importHistoryBackup,
   loadHistory,
   toggleHistoryFavorite,
+  setHistoryFavorites,
   validateHistoryBackup,
   HISTORY_BACKUP_FORMAT,
   MAX_HISTORY_BACKUP_BYTES,
@@ -340,4 +342,46 @@ test("counts merged records correctly when a full history evicts an older item",
   const finalItems = loadHistory(storage).items;
   assert.equal(finalItems.length, MAX_HISTORY_ITEMS);
   assert.ok(finalItems.some((item) => item.id === newerRecord.id));
+});
+
+
+test("marks multiple history records as favorites in one bulk operation", () => {
+  const storage = new MemoryStorage();
+  const one = addHistoryRecord({ source: "generated", kind: "text", content: "uno" }, storage).record;
+  const two = addHistoryRecord({ source: "scanned", kind: "text", content: "dos" }, storage).record;
+  const three = addHistoryRecord({ source: "generated", kind: "text", content: "tres" }, storage).record;
+
+  const result = setHistoryFavorites([one.id, two.id, two.id], true, storage);
+  assert.equal(result.ok, true);
+  assert.equal(result.updatedCount, 2);
+  const rows = loadHistory(storage).items;
+  assert.equal(rows.find((item) => item.id === one.id).favorite, true);
+  assert.equal(rows.find((item) => item.id === two.id).favorite, true);
+  assert.equal(rows.find((item) => item.id === three.id).favorite, false);
+  assert.equal(setHistoryFavorites([one.id, two.id], true, storage).updatedCount, 0);
+  assert.equal(setHistoryFavorites([one.id], false, storage).updatedCount, 1);
+});
+
+test("deletes multiple selected history records without affecting unselected records", () => {
+  const storage = new MemoryStorage();
+  const one = addHistoryRecord({ source: "generated", kind: "text", content: "uno" }, storage).record;
+  const two = addHistoryRecord({ source: "scanned", kind: "text", content: "dos" }, storage).record;
+  const three = addHistoryRecord({ source: "generated", kind: "text", content: "tres" }, storage).record;
+
+  const result = deleteHistoryRecords([one.id, three.id, three.id], storage);
+  assert.equal(result.ok, true);
+  assert.equal(result.deletedCount, 2);
+  assert.deepEqual(loadHistory(storage).items.map((item) => item.id), [two.id]);
+});
+
+test("bulk history operations reject empty selections and preserve corrupt storage", () => {
+  const storage = new MemoryStorage();
+  const emptyFavorite = setHistoryFavorites([], true, storage);
+  const emptyDelete = deleteHistoryRecords([], storage);
+  assert.equal(emptyFavorite.ok, false);
+  assert.equal(emptyDelete.ok, false);
+  storage.setItem(HISTORY_STORAGE_KEY, "{");
+  assert.equal(setHistoryFavorites(["id"], true, storage).ok, false);
+  assert.equal(deleteHistoryRecords(["id"], storage).ok, false);
+  assert.equal(storage.getItem(HISTORY_STORAGE_KEY), "{");
 });
