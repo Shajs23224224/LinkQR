@@ -2,6 +2,7 @@ import { appConfig } from "./config.js";
 import { destroySettingsPage, initSettingsPage, renderSettingsPage } from "./features/settings/settings-page.js";
 import { initializePwa } from "./pwa.js";
 import { destroyHistoryPage, initHistoryPage, renderHistoryPage } from "./features/history/history-page.js";
+import { destroyAnalyticsPage, initAnalyticsPage, renderAnalyticsPage } from "./features/history/history-analytics-page.js";
 import {
   destroyQrScanner,
   initQrScanner,
@@ -49,6 +50,13 @@ const routeDefinitions = {
     phase: "Fase 8",
     description: "Consulta tus QR favoritos y accede rápidamente a su contenido guardado localmente.",
   },
+  analytics: {
+    label: "Estadísticas",
+    title: "Estadísticas del historial",
+    phase: "Fase 15",
+    description: "Consulta la composición, actividad reciente y etiquetas de tu historial QR local.",
+    render: renderAnalyticsPage,
+  },
   settings: {
     label: "Ajustes",
     title: "Ajustes de LinkQR",
@@ -72,7 +80,7 @@ function renderHome() {
       <div class="welcome-copy">
         <span class="welcome-kicker">BIENVENIDO A LINKQR</span>
         <h2 id="welcome-title">Tus ideas, listas<br />para convertirse en QR.</h2>
-        <p>Genera un código QR para una dirección web o un texto. Las demás herramientas se habilitarán por fases.</p>
+        <p>Genera, escanea y organiza tus códigos QR, y consulta estadísticas sobre tu actividad local.</p>
         <a class="button button-primary" href="#/generator">Preparar un código QR <span aria-hidden="true">→</span></a>
       </div>
       <div class="welcome-art" aria-hidden="true">
@@ -108,6 +116,12 @@ function renderHome() {
         <a class="quick-card" href="#/history">
           <span class="quick-icon" aria-hidden="true">◷</span>
           <span class="quick-card-copy"><strong>Ver historial</strong><small>Consulta códigos guardados</small></span>
+          <span class="quick-arrow" aria-hidden="true">↗</span>
+          <span class="quick-card-state">Disponible</span>
+        </a>
+        <a class="quick-card" href="#/analytics">
+          <span class="quick-icon" aria-hidden="true">▥</span>
+          <span class="quick-card-copy"><strong>Estadísticas</strong><small>Analiza tu actividad QR</small></span>
           <span class="quick-arrow" aria-hidden="true">↗</span>
           <span class="quick-card-state">Disponible</span>
         </a>
@@ -188,6 +202,7 @@ function renderRoute({ moveFocus = false } = {}) {
   destroyQrGenerator();
   destroyQrScanner();
   destroyHistoryPage();
+  destroyAnalyticsPage();
   destroySettingsPage();
   view.innerHTML = routeName === "home"
     ? route.render()
@@ -199,9 +214,11 @@ function renderRoute({ moveFocus = false } = {}) {
           ? renderHistoryPage()
           : routeName === "favorites"
             ? renderHistoryPage({ favoritesOnly: true })
-            : routeName === "settings"
-              ? renderSettingsPage()
-              : renderPlaceholder(route);
+            : routeName === "analytics"
+              ? renderAnalyticsPage()
+              : routeName === "settings"
+                ? renderSettingsPage()
+                : renderPlaceholder(route);
 
   document.querySelectorAll("[data-route]").forEach((link) => {
     if (!(link instanceof HTMLAnchorElement)) return;
@@ -218,6 +235,7 @@ function renderRoute({ moveFocus = false } = {}) {
   if (routeName === "scanner") initQrScanner();
   if (routeName === "history") initHistoryPage();
   if (routeName === "favorites") initHistoryPage({ favoritesOnly: true });
+  if (routeName === "analytics") initAnalyticsPage();
   if (routeName === "settings") initSettingsPage();
 
   if (breadcrumbCurrent) breadcrumbCurrent.textContent = route.label;

@@ -1,0 +1,124 @@
+.analytics-page-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .8rem;
+  margin: 0 0 1.1rem;
+}
+.analytics-updated-note { margin: 0; color: var(--color-muted); font-size: .76rem; line-height: 1.5; }
+.analytics-page-toolbar .button { min-height: 40px; white-space: nowrap; }
+.analytics-status {
+  margin: 0 0 1rem;
+  padding: .8rem .9rem;
+  border: 1px solid #fed7aa;
+  border-radius: var(--radius-small);
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: .78rem;
+}
+.analytics-status.is-error { border-color: #fecaca; background: #fef2f2; color: #991b1b; }
+.analytics-dashboard[hidden], .analytics-empty[hidden] { display: none; }
+.analytics-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .8rem;
+  margin-bottom: .8rem;
+}
+.analytics-secondary-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .65rem;
+  margin-bottom: 1rem;
+}
+.analytics-metric-card {
+  display: grid;
+  align-content: start;
+  gap: .45rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-medium);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-panel);
+}
+.analytics-metric-grid .analytics-metric-card { min-height: 135px; padding: 1.1rem; }
+.analytics-secondary-metrics .analytics-metric-card { gap: .3rem; padding: .8rem; box-shadow: none; }
+.analytics-metric-label { color: var(--color-ink-soft); font-size: .72rem; font-weight: 750; }
+.analytics-metric-value { color: var(--color-ink); font-size: clamp(1.45rem, 3vw, 2.1rem); font-weight: 850; letter-spacing: -.05em; line-height: 1.1; overflow-wrap: anywhere; }
+.analytics-secondary-metrics .analytics-metric-value { font-size: 1.35rem; }
+.analytics-metric-note { color: var(--color-muted); font-size: .69rem; line-height: 1.45; }
+.analytics-metric-brand { border-top: 3px solid var(--color-brand); }
+.analytics-metric-blue { border-top: 3px solid #818cf8; }
+.analytics-metric-green { border-top: 3px solid #34d399; }
+.analytics-metric-amber { border-top: 3px solid #fbbf24; }
+.analytics-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .85rem;
+}
+.analytics-panel {
+  min-width: 0;
+  padding: 1.1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-large);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-panel);
+}
+.analytics-panel-wide { grid-column: 1 / -1; }
+.analytics-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-bottom: 1.1rem;
+}
+.analytics-panel-heading .section-index { margin: 0 0 .25rem; }
+.analytics-panel-heading h2 { margin: 0; font-size: 1rem; font-weight: 800; }
+.analytics-panel-icon { display: grid; width: 36px; height: 36px; flex: 0 0 auto; place-items: center; border-radius: 11px; background: #eef2ff; color: #4f46e5; font-size: 1.2rem; }
+.analytics-panel-aside { color: var(--color-muted); font-size: .69rem; text-align: right; }
+.analytics-text-link { color: var(--color-brand); font-size: .74rem; font-weight: 750; text-decoration: none; }
+.analytics-text-link:hover { text-decoration: underline; }
+.analytics-bar-list { display: grid; gap: .85rem; }
+.analytics-bar-row { display: grid; gap: .4rem; min-width: 0; }
+.analytics-bar-heading { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.analytics-bar-label { color: var(--color-ink-soft); font-size: .75rem; overflow-wrap: anywhere; }
+.analytics-bar-value { color: var(--color-ink); font-size: .74rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.analytics-bar-track { height: 8px; overflow: hidden; border-radius: 999px; background: #eef0f6; }
+.analytics-bar-fill { display: block; height: 100%; min-width: 0; border-radius: inherit; background: var(--color-brand); transition: width .2s ease; }
+.analytics-activity-bars { grid-template-columns: repeat(7, minmax(0, 1fr)); align-items: end; gap: .65rem; }
+.analytics-activity-bars .analytics-bar-row { align-content: end; }
+.analytics-activity-bars .analytics-bar-heading { align-items: baseline; flex-direction: column; gap: .15rem; }
+.analytics-activity-bars .analytics-bar-label { font-size: .68rem; }
+.analytics-activity-bars .analytics-bar-track { height: 9px; }
+.analytics-activity-bars .analytics-bar-fill { background: #34d399; }
+.analytics-no-tags { margin: 0; color: var(--color-muted); font-size: .76rem; line-height: 1.6; }
+.analytics-footnote { margin: 1rem 0 0; color: var(--color-muted); font-size: .69rem; line-height: 1.6; }
+.analytics-empty {
+  display: grid;
+  justify-items: center;
+  padding: clamp(2rem, 6vw, 4rem) 1rem;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-large);
+  background: var(--color-surface);
+  text-align: center;
+}
+.analytics-empty-icon { display: grid; width: 64px; height: 64px; margin-bottom: .9rem; place-items: center; border-radius: 18px; background: #eef2ff; color: #818cf8; font-size: 2rem; }
+.analytics-empty h2 { margin: 0; font-size: 1rem; font-weight: 800; }
+.analytics-empty p { max-width: 390px; margin: .5rem 0 1rem; color: var(--color-muted); font-size: .78rem; line-height: 1.6; }
+@media (max-width: 900px) {
+  .analytics-metric-grid, .analytics-secondary-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .analytics-page-toolbar { align-items: stretch; flex-direction: column; }
+  .analytics-page-toolbar .button { width: 100%; justify-content: center; }
+  .analytics-chart-grid { grid-template-columns: minmax(0, 1fr); }
+  .analytics-panel-wide { grid-column: auto; }
+  .analytics-panel { padding: .9rem; }
+  .analytics-activity-bars { gap: .4rem; }
+  .analytics-activity-bars .analytics-bar-label { font-size: .62rem; }
+  .analytics-activity-bars .analytics-bar-value { font-size: .65rem; }
+}
+@media (max-width: 380px) {
+  .analytics-metric-grid, .analytics-secondary-metrics { grid-template-columns: minmax(0, 1fr); }
+  .analytics-metric-grid .analytics-metric-card { min-height: auto; }
+}

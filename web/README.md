@@ -56,6 +56,7 @@ La publicación se construye desde `web/` y se despliega mediante el workflow `.
 - [Fase 12 — Selección múltiple y acciones masivas](./PHASE-12-BULK-HISTORY.md)
 - [Fase 13 — Etiquetas y filtros avanzados](./PHASE-13-TAGS-FILTERS.md)
 - [Fase 14 — Filtros temporales y ordenamiento](./PHASE-14-ADVANCED-HISTORY-FILTERS.md)
+- [Fase 15 — Estadísticas del historial QR](./PHASE-15-HISTORY-ANALYTICS.md)
 
 ## Estado funcional
 
@@ -63,5 +64,6 @@ La publicación se construye desde `web/` y se despliega mediante el workflow `.
 - **Implementado:** ajustes locales para valores QR predeterminados y control del guardado automático de historial.
 - **Implementado:** etiquetas por registro, filtros dinámicos por etiqueta y aplicación/eliminación masiva de etiquetas con una sola escritura local.
 - **Implementado:** filtros de historial por tipo de contenido y rango de fechas, cinco criterios de ordenación y restablecimiento de filtros.
+- **Implementado:** panel de estadísticas locales con distribución por origen y contenido, favoritos, etiquetas frecuentes y actividad de los últimos siete días.
 - **Pendiente:** cuenta y sincronización entre dispositivos.
 - La aplicación nunca recibe la clave administrativa del backend en el cliente web.

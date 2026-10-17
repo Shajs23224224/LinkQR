@@ -79,7 +79,7 @@ test("manifest declares a standalone app with relative shortcuts and icons", asy
 
 test("service worker implements versioned cache and offline navigation fallback", async () => {
   const worker = await readFile(publicFile("sw.js"), "utf8");
-  assert.match(worker, /linkqr-pwa-v6/);
+  assert.match(worker, /linkqr-pwa-v7/);
   assert.match(worker, /addEventListener\("install"/);
   assert.match(worker, /addEventListener\("activate"/);
   assert.match(worker, /addEventListener\("fetch"/);
