@@ -11,7 +11,11 @@ import {
   importHistoryBackup,
   loadHistory,
   MAX_HISTORY_BACKUP_BYTES,
+  MAX_HISTORY_TAG_LENGTH,
+  MAX_HISTORY_TAGS_PER_RECORD,
   setHistoryFavorites,
+  updateHistoryTags,
+  updateHistoryTagsForRecords,
   toggleHistoryFavorite,
   validateHistoryBackup,
 } from "./history-store.js";
@@ -23,7 +27,7 @@ export function renderHistoryPage({ favoritesOnly = false } = {}) {
   const description = favoritesOnly
     ? "Accede rápidamente a los códigos que has marcado como favoritos."
     : "Consulta y organiza los QR generados o escaneados en este navegador.";
-  const filter = favoritesOnly ? "" : '<div class="form-field history-filter-field"><label for="history-source-filter">Origen</label><select id="history-source-filter" class="history-source-filter"><option value="all">Todos</option><option value="generated">Generados</option><option value="scanned">Escaneados</option></select></div>';
+  const filter = (favoritesOnly ? "" : '<div class="form-field history-filter-field"><label for="history-source-filter">Origen</label><select id="history-source-filter" class="history-source-filter"><option value="all">Todos</option><option value="generated">Generados</option><option value="scanned">Escaneados</option></select></div>') + '<div class="form-field history-filter-field"><label for="history-tag-filter">Etiqueta</label><select id="history-tag-filter" class="history-source-filter"><option value="all">Todas las etiquetas</option></select></div>';
   const clear = favoritesOnly ? "" : '<button class="button button-secondary history-clear-button" id="history-clear-button" type="button">Borrar todo</button>';
   const backupTools = favoritesOnly ? "" : '<section class="history-backup-panel" aria-label="Copias de seguridad"><div class="history-backup-copy"><h2>Copias de seguridad</h2><p>Guarda una copia JSON o restaura registros desde un archivo exportado por LinkQR.</p></div><div class="history-backup-actions"><button class="button button-secondary" id="history-export-button" type="button">Exportar JSON</button><label class="button button-secondary history-import-label" for="history-import-file">Importar JSON<input id="history-import-file" type="file" accept=".json,application/json" hidden /></label><div class="form-field history-import-mode-field"><label for="history-import-mode">Al importar</label><select id="history-import-mode" class="history-source-filter"><option value="merge">Combinar con historial</option><option value="replace">Reemplazar historial</option></select></div></div></section>';
 
@@ -44,7 +48,7 @@ export function renderHistoryPage({ favoritesOnly = false } = {}) {
     '<button class="button button-secondary" id="history-bulk-copy" type="button" disabled>Copiar contenido</button>',
     '<button class="button button-secondary" id="history-bulk-export" type="button" disabled>Exportar selección JSON</button>',
     '<button class="button button-secondary history-delete-button" id="history-bulk-delete" type="button" disabled>Eliminar selección</button>',
-    '</div></section>',
+    '</div><div class="history-bulk-tag-tools"><div class="form-field"><label for="history-bulk-tags">Etiquetas para la selección (separadas por comas)</label><input id="history-bulk-tags" type="text" maxlength="' + (MAX_HISTORY_TAGS_PER_RECORD * (MAX_HISTORY_TAG_LENGTH + 1) - 1) + '" placeholder="trabajo, personal, compartir" autocomplete="off" /></div><button class="button button-secondary" id="history-bulk-tags-add" type="button" disabled>Añadir etiquetas</button><button class="button button-secondary" id="history-bulk-tags-remove" type="button" disabled>Quitar etiquetas</button></div></section>',
     '<p class="history-action-status" id="history-action-status" role="status" aria-live="polite"></p><div class="history-record-list" id="history-record-list"></div>',
     '<div class="history-empty-state" id="history-empty-state" hidden><span class="history-empty-icon" aria-hidden="true">' + (favoritesOnly ? "♡" : "◷") + '</span><h2 id="history-empty-title"></h2><p id="history-empty-description"></p>',
     favoritesOnly ? '<a class="button button-primary" href="#/history">Ver historial completo</a>' : '<a class="button button-primary" href="#/generator">Crear un QR</a>',
@@ -88,6 +92,12 @@ function renderRecord(record, selected = false) {
   kind.className = "history-record-tag";
   kind.textContent = record.kind === "url" ? "URL" : "Texto";
   tags.append(source, kind);
+  for (const tag of record.tags ?? []) {
+    const customTag = document.createElement("span");
+    customTag.className = "history-record-tag tag-custom";
+    customTag.textContent = tag;
+    tags.append(customTag);
+  }
 
   const date = document.createElement("time");
   date.className = "history-record-date";
@@ -114,6 +124,34 @@ function renderRecord(record, selected = false) {
   content.textContent = record.content;
   content.title = record.content;
 
+  const editor = document.createElement("form");
+  editor.className = "history-tag-editor";
+  editor.hidden = true;
+  editor.dataset.tagEditor = "true";
+  editor.dataset.recordId = record.id;
+  const editorLabel = document.createElement("label");
+  editorLabel.htmlFor = "history-tags-" + record.id;
+  editorLabel.textContent = "Etiquetas (separadas por comas)";
+  const editorInput = document.createElement("input");
+  editorInput.id = editorLabel.htmlFor;
+  editorInput.type = "text";
+  editorInput.value = (record.tags ?? []).join(", ");
+  editorInput.maxLength = MAX_HISTORY_TAGS_PER_RECORD * (MAX_HISTORY_TAG_LENGTH + 1) - 1;
+  editorInput.placeholder = "trabajo, personal, compartir";
+  editorInput.autocomplete = "off";
+  editorInput.dataset.tagInput = "true";
+  const editorHelp = document.createElement("p");
+  editorHelp.textContent = "Hasta " + MAX_HISTORY_TAGS_PER_RECORD + " etiquetas de " + MAX_HISTORY_TAG_LENGTH + " caracteres. No distingue mayúsculas.";
+  const editorActions = document.createElement("div");
+  editorActions.className = "history-tag-editor-actions";
+  const saveTags = document.createElement("button");
+  saveTags.type = "submit";
+  saveTags.className = "button button-secondary";
+  saveTags.textContent = "Guardar etiquetas";
+  const cancelTags = actionButton("Cancelar", "cancel-tags", record.id);
+  editorActions.append(saveTags, cancelTags);
+  editor.append(editorLabel, editorInput, editorHelp, editorActions);
+
   const actions = document.createElement("div");
   actions.className = "history-record-actions";
   const favorite = actionButton(
@@ -124,7 +162,7 @@ function renderRecord(record, selected = false) {
   );
   favorite.setAttribute("aria-pressed", String(record.favorite));
   favorite.setAttribute("aria-label", record.favorite ? "Quitar de favoritos" : "Añadir a favoritos");
-  actions.append(favorite, actionButton("Copiar", "copy", record.id));
+  actions.append(actionButton("Etiquetas", "edit-tags", record.id), favorite, actionButton("Copiar", "copy", record.id));
   if (new TextEncoder().encode(record.content).byteLength <= MAX_QR_PAYLOAD_BYTES) {
     actions.append(actionButton("Recrear QR", "regenerate", record.id, "history-regenerate-button"));
   }
@@ -140,7 +178,7 @@ function renderRecord(record, selected = false) {
     actions.append(link);
   }
   actions.append(actionButton("Eliminar", "delete", record.id, "history-delete-button"));
-  card.append(header, content, actions);
+  card.append(header, content, editor, actions);
   return card;
 }
 
@@ -156,6 +194,7 @@ export function initHistoryPage({ favoritesOnly = false } = {}) {
 
   const search = document.querySelector("#history-search");
   const filter = document.querySelector("#history-source-filter");
+  const tagFilter = document.querySelector("#history-tag-filter");
   const clear = document.querySelector("#history-clear-button");
   const exportButton = document.querySelector("#history-export-button");
   const importFile = document.querySelector("#history-import-file");
@@ -167,6 +206,9 @@ export function initHistoryPage({ favoritesOnly = false } = {}) {
   const bulkCopy = document.querySelector("#history-bulk-copy");
   const bulkExport = document.querySelector("#history-bulk-export");
   const bulkDelete = document.querySelector("#history-bulk-delete");
+  const bulkTagsInput = document.querySelector("#history-bulk-tags");
+  const bulkTagsAdd = document.querySelector("#history-bulk-tags-add");
+  const bulkTagsRemove = document.querySelector("#history-bulk-tags-remove");
   const storageMessage = document.querySelector("#history-storage-message");
   const summary = document.querySelector("#history-summary");
   const status = document.querySelector("#history-action-status");
@@ -185,7 +227,8 @@ export function initHistoryPage({ favoritesOnly = false } = {}) {
       !(empty instanceof HTMLElement) ||
       !(emptyTitle instanceof HTMLHeadingElement) ||
       !(emptyDescription instanceof HTMLParagraphElement) ||
-      (!favoritesOnly && !(filter instanceof HTMLSelectElement))) return;
+      (!favoritesOnly && !(filter instanceof HTMLSelectElement)) ||
+      !(tagFilter instanceof HTMLSelectElement)) return;
 
   function render() {
     const data = loadHistory();
@@ -194,13 +237,19 @@ export function initHistoryPage({ favoritesOnly = false } = {}) {
     storageMessage.classList.toggle("is-error", !data.ok);
 
     const all = data.ok ? data.items : [];
+    const previousTag = tagFilter.value;
+    const availableTags = [...new Set(all.flatMap((item) => item.tags ?? []))].sort((a, b) => a.localeCompare(b));
+    tagFilter.replaceChildren(new Option("Todas las etiquetas", "all"), ...availableTags.map((tag) => new Option(tag, tag)));
+    tagFilter.value = availableTags.includes(previousTag) ? previousTag : "all";
     const availableIds = new Set(all.map((item) => item.id));
     for (const id of selectedIds) if (!availableIds.has(id)) selectedIds.delete(id);
     const query = search.value.trim().toLocaleLowerCase();
     const origin = favoritesOnly ? "all" : filter.value;
+    const selectedTag = tagFilter.value;
     const records = all
       .filter((item) => !favoritesOnly || item.favorite)
       .filter((item) => origin === "all" || item.source === origin)
+      .filter((item) => selectedTag === "all" || (item.tags ?? []).includes(selectedTag))
       .filter((item) => !query || item.content.toLocaleLowerCase().includes(query));
 
     visibleRecords = records;
@@ -214,7 +263,7 @@ export function initHistoryPage({ favoritesOnly = false } = {}) {
     if (selectionCount) {
       selectionCount.textContent = selectedIds.size + " seleccionado" + (selectedIds.size === 1 ? "" : "s");
     }
-    [bulkFavorite, bulkUnfavorite, bulkCopy, bulkExport, bulkDelete].forEach((button) => {
+    [bulkFavorite, bulkUnfavorite, bulkCopy, bulkExport, bulkDelete, bulkTagsAdd, bulkTagsRemove].forEach((button) => {
       if (button instanceof HTMLButtonElement) button.disabled = selectedIds.size === 0;
     });
     summary.textContent = favoritesOnly
@@ -223,7 +272,7 @@ export function initHistoryPage({ favoritesOnly = false } = {}) {
     empty.hidden = records.length > 0;
 
     if (!records.length) {
-      if (query || origin !== "all") {
+      if (query || origin !== "all" || selectedTag !== "all") {
         emptyTitle.textContent = "No se encontraron coincidencias";
         emptyDescription.textContent = "Prueba con otra búsqueda o cambia el filtro.";
       } else if (favoritesOnly) {
@@ -239,6 +288,7 @@ export function initHistoryPage({ favoritesOnly = false } = {}) {
   const say = (message) => { status.textContent = message; };
   search.addEventListener("input", render, { signal });
   filter?.addEventListener("change", render, { signal });
+  tagFilter.addEventListener("change", render, { signal });
   selectAll?.addEventListener("change", () => {
     for (const record of visibleRecords) {
       if (selectAll.checked) selectedIds.add(record.id);
@@ -265,6 +315,17 @@ export function initHistoryPage({ favoritesOnly = false } = {}) {
     say(result.ok ? result.updatedCount + " registro(s) retirado(s) de favoritos." : result.error);
     render();
   }, { signal });
+  const applyBulkTags = (mode) => {
+    if (!selectedIds.size) { say("Selecciona al menos un registro."); return; }
+    const tags = bulkTagsInput instanceof HTMLInputElement ? bulkTagsInput.value.split(",").map((tag) => tag.trim()) : [];
+    if (!tags.some(Boolean)) { say("Escribe al menos una etiqueta separada por comas."); return; }
+    const result = updateHistoryTagsForRecords([...selectedIds], { mode, tags });
+    say(result.ok ? result.updatedCount + " registro(s) actualizado(s) con etiquetas." : result.error);
+    if (result.ok && bulkTagsInput instanceof HTMLInputElement) bulkTagsInput.value = "";
+    render();
+  };
+  bulkTagsAdd?.addEventListener("click", () => applyBulkTags("add"), { signal });
+  bulkTagsRemove?.addEventListener("click", () => applyBulkTags("remove"), { signal });
   bulkCopy?.addEventListener("click", async () => {
     const data = loadHistory();
     if (!data.ok) { say(data.error); return; }
@@ -382,6 +443,19 @@ export function initHistoryPage({ favoritesOnly = false } = {}) {
     render();
   }, { signal });
 
+  list.addEventListener("submit", (event) => {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement) || form.dataset.tagEditor !== "true") return;
+    event.preventDefault();
+    const id = form.dataset.recordId;
+    const input = form.querySelector("input[data-tag-input]");
+    if (!id || !(input instanceof HTMLInputElement)) return;
+    const result = updateHistoryTags(id, input.value.split(",").map((tag) => tag.trim()));
+    if (!result.ok) { say(result.error); return; }
+    say("Etiquetas guardadas para el registro.");
+    render();
+  }, { signal });
+
   list.addEventListener("click", async (event) => {
     if (!(event.target instanceof Element)) return;
     const button = event.target.closest("button[data-action][data-record-id]");
@@ -390,6 +464,21 @@ export function initHistoryPage({ favoritesOnly = false } = {}) {
     const action = button.dataset.action;
     if (!id) return;
 
+    if (action === "edit-tags") {
+      const card = button.closest(".history-record");
+      const editor = card?.querySelector('form[data-tag-editor="true"]');
+      const input = editor?.querySelector("input[data-tag-input]");
+      if (editor instanceof HTMLFormElement && input instanceof HTMLInputElement) {
+        editor.hidden = false;
+        input.focus();
+      }
+      return;
+    }
+    if (action === "cancel-tags") {
+      const editor = button.closest('form[data-tag-editor="true"]');
+      if (editor instanceof HTMLFormElement) editor.hidden = true;
+      return;
+    }
     if (action === "favorite") {
       const result = toggleHistoryFavorite(id);
       say(result.ok ? (result.favorite ? "Añadido a favoritos." : "Quitado de favoritos.") : result.error);

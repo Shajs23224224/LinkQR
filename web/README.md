@@ -54,10 +54,12 @@ La publicación se construye desde `web/` y se despliega mediante el workflow `.
 - [Fase 10 — PWA instalable y uso sin conexión](./PHASE-10-PWA-OFFLINE.md)
 - [Fase 11 — Ajustes funcionales](./PHASE-11-SETTINGS.md)
 - [Fase 12 — Selección múltiple y acciones masivas](./PHASE-12-BULK-HISTORY.md)
+- [Fase 13 — Etiquetas y filtros avanzados](./PHASE-13-TAGS-FILTERS.md)
 
 ## Estado funcional
 
 - **Implementado:** panel y navegación; generación QR personalizada con descarga PNG; lectura por cámara e imagen; historial local, búsqueda, filtros, favoritos, copia, selección múltiple, acciones masivas, reutilización en el generador y copias JSON importables/exportables y PWA instalable con recursos de la aplicación disponibles sin conexión tras la primera visita.
 - **Implementado:** ajustes locales para valores QR predeterminados y control del guardado automático de historial.
+- **Implementado:** etiquetas por registro, filtros dinámicos por etiqueta y aplicación/eliminación masiva de etiquetas con una sola escritura local.
 - **Pendiente:** cuenta y sincronización entre dispositivos.
 - La aplicación nunca recibe la clave administrativa del backend en el cliente web.

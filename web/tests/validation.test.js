@@ -17,6 +17,10 @@ import {
   validateHistoryBackup,
   HISTORY_BACKUP_FORMAT,
   MAX_HISTORY_BACKUP_BYTES,
+  MAX_HISTORY_TAG_LENGTH,
+  MAX_HISTORY_TAGS_PER_RECORD,
+  updateHistoryTags,
+  updateHistoryTagsForRecords,
 } from "../src/features/history/history-store.js";
 import {
   GENERATOR_DRAFT_STORAGE_KEY,
@@ -384,4 +388,62 @@ test("bulk history operations reject empty selections and preserve corrupt stora
   assert.equal(setHistoryFavorites(["id"], true, storage).ok, false);
   assert.equal(deleteHistoryRecords(["id"], storage).ok, false);
   assert.equal(storage.getItem(HISTORY_STORAGE_KEY), "{");
+});
+
+
+test("custom tags are normalized, deduplicated and persisted on history records", () => {
+  const storage = new MemoryStorage();
+  const record = addHistoryRecord({ source: "generated", kind: "text", content: "etiquetado" }, storage).record;
+  assert.deepEqual(record.tags, []);
+  const updated = updateHistoryTags(record.id, [" Trabajo ", "trabajo", "Personal"], storage);
+  assert.equal(updated.ok, true);
+  assert.equal(updated.updatedCount, 1);
+  assert.deepEqual(loadHistory(storage).items.find((item) => item.id === record.id).tags, ["trabajo", "personal"]);
+  assert.equal(updateHistoryTags(record.id, ["x".repeat(MAX_HISTORY_TAG_LENGTH + 1)], storage).ok, false);
+  assert.deepEqual(loadHistory(storage).items.find((item) => item.id === record.id).tags, ["trabajo", "personal"]);
+});
+
+test("bulk tag operations add and remove tags atomically", () => {
+  const storage = new MemoryStorage();
+  const one = addHistoryRecord({ source: "generated", kind: "text", content: "uno" }, storage).record;
+  const two = addHistoryRecord({ source: "scanned", kind: "text", content: "dos" }, storage).record;
+  const added = updateHistoryTagsForRecords([one.id, two.id, two.id], { mode: "add", tags: ["Trabajo", "personal"] }, storage);
+  assert.equal(added.ok, true);
+  assert.equal(added.updatedCount, 2);
+  assert.deepEqual(loadHistory(storage).items.map((item) => item.tags), [["trabajo", "personal"], ["trabajo", "personal"]]);
+  const removed = updateHistoryTagsForRecords([one.id, two.id], { mode: "remove", tags: ["PERSONAL"] }, storage);
+  assert.equal(removed.ok, true);
+  assert.equal(removed.updatedCount, 2);
+  assert.deepEqual(loadHistory(storage).items.map((item) => item.tags), [["trabajo"], ["trabajo"]]);
+  assert.equal(updateHistoryTagsForRecords([], { mode: "add", tags: ["x"] }, storage).ok, false);
+});
+
+test("bulk tag limits fail atomically", () => {
+  const storage = new MemoryStorage();
+  const one = addHistoryRecord({ source: "generated", kind: "text", content: "uno" }, storage).record;
+  const two = addHistoryRecord({ source: "generated", kind: "text", content: "dos" }, storage).record;
+  const many = Array.from({ length: MAX_HISTORY_TAGS_PER_RECORD }, (_, index) => "tag" + index);
+  assert.equal(updateHistoryTags(one.id, many, storage).ok, true);
+  const before = storage.getItem(HISTORY_STORAGE_KEY);
+  const result = updateHistoryTagsForRecords([one.id, two.id], { mode: "add", tags: ["exceso"] }, storage);
+  assert.equal(result.ok, false);
+  assert.equal(storage.getItem(HISTORY_STORAGE_KEY), before);
+  assert.deepEqual(loadHistory(storage).items.find((item) => item.id === two.id).tags, []);
+});
+
+test("older backup files without tags restore with an empty tag list", () => {
+  const storage = new MemoryStorage();
+  const legacyRecord = {
+    id: "legacy-no-tags",
+    source: "generated",
+    kind: "text",
+    content: "legacy",
+    createdAt: new Date().toISOString(),
+    favorite: false,
+  };
+  const validated = validateHistoryBackup({ format: HISTORY_BACKUP_FORMAT, version: 1, items: [legacyRecord] });
+  assert.equal(validated.ok, true);
+  assert.deepEqual(validated.backup.items[0].tags, []);
+  assert.equal(importHistoryBackup(validated.backup, { mode: "replace" }, storage).ok, true);
+  assert.deepEqual(loadHistory(storage).items[0].tags, []);
 });

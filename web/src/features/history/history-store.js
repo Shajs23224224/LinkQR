@@ -2,6 +2,8 @@ export const HISTORY_STORAGE_KEY = "linkqr.history.v1";
 export const HISTORY_SCHEMA_VERSION = 1;
 export const MAX_HISTORY_ITEMS = 200;
 export const MAX_HISTORY_CONTENT_LENGTH = 8192;
+export const MAX_HISTORY_TAGS_PER_RECORD = 10;
+export const MAX_HISTORY_TAG_LENGTH = 32;
 export const HISTORY_BACKUP_FORMAT = "linkqr-history-backup";
 export const HISTORY_BACKUP_VERSION = 1;
 export const MAX_HISTORY_BACKUP_BYTES = 8 * 1024 * 1024;
@@ -21,6 +23,24 @@ function createId() {
   return "qr-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 12);
 }
 
+export function normalizeHistoryTags(tags = []) {
+  if (!Array.isArray(tags)) return { ok: false, error: "La lista de etiquetas no es válida." };
+  const normalized = [];
+  const seen = new Set();
+  for (const value of tags) {
+    if (typeof value !== "string") return { ok: false, error: "Cada etiqueta debe ser texto." };
+    const tag = value.trim().toLocaleLowerCase();
+    if (!tag) continue;
+    if (tag.length > MAX_HISTORY_TAG_LENGTH) return { ok: false, error: "Cada etiqueta puede tener como máximo " + MAX_HISTORY_TAG_LENGTH + " caracteres." };
+    if (/[\u0000-\u001F\u007F,]/u.test(tag)) return { ok: false, error: "Las etiquetas no pueden contener comas ni caracteres de control." };
+    if (seen.has(tag)) continue;
+    seen.add(tag);
+    normalized.push(tag);
+  }
+  if (normalized.length > MAX_HISTORY_TAGS_PER_RECORD) return { ok: false, error: "Cada registro admite como máximo " + MAX_HISTORY_TAGS_PER_RECORD + " etiquetas." };
+  return { ok: true, tags: normalized };
+}
+
 function isValidRecord(item) {
   return Boolean(item && typeof item === "object" &&
     typeof item.id === "string" && item.id.length > 0 &&
@@ -28,7 +48,7 @@ function isValidRecord(item) {
     typeof item.content === "string" && item.content.length > 0 &&
     item.content.length <= MAX_HISTORY_CONTENT_LENGTH &&
     typeof item.createdAt === "string" && Number.isFinite(Date.parse(item.createdAt)) &&
-    typeof item.favorite === "boolean");
+    typeof item.favorite === "boolean" && normalizeHistoryTags(item.tags ?? []).ok);
 }
 
 function failure(reason, error) { return { ok: false, items: [], reason, error }; }
@@ -49,7 +69,8 @@ export function loadHistory(storageOverride) {
     return failure("corrupt", "La versión de los datos guardados no es compatible. Al guardar un nuevo registro se intentará reconstruir el historial.");
   }
 
-  const items = data.items.filter(isValidRecord);
+  const validItems = data.items.filter(isValidRecord);
+  const items = validItems.map((item) => ({ ...item, tags: normalizeHistoryTags(item.tags ?? []).tags }));
   return {
     ok: true,
     items: items.slice(0, MAX_HISTORY_ITEMS),
@@ -89,6 +110,7 @@ export function addHistoryRecord({ source, kind, content } = {}, storageOverride
     id: createId(), source, kind, content,
     createdAt: new Date().toISOString(),
     favorite: false,
+    tags: [],
   };
   const result = persist([record, ...(current.ok ? current.items : [])], storage);
   return { ...result, record: result.ok ? record : null, warning: !current.ok ? current.error : current.warning || "" };
@@ -196,6 +218,7 @@ export function validateHistoryBackup(input) {
       content: item.content,
       createdAt: item.createdAt,
       favorite: item.favorite,
+      tags: normalizeHistoryTags(item.tags ?? []).tags,
     });
   }
   return { ok: true, backup: { format: HISTORY_BACKUP_FORMAT, version: HISTORY_BACKUP_VERSION, exportedAt: parsed.exportedAt, items } };
@@ -293,4 +316,60 @@ export function deleteHistoryRecords(recordIds, storageOverride) {
   if (!deletedCount) return { ok: false, deletedCount: 0, error: "No se encontraron los registros seleccionados." };
   const result = persist(items, storage);
   return { ...result, deletedCount: result.ok ? deletedCount : 0 };
+}
+
+
+/** Replace one record's complete tag list. */
+export function updateHistoryTags(recordId, tags, storageOverride) {
+  if (typeof recordId !== "string" || !recordId) return { ok: false, updatedCount: 0, error: "El registro seleccionado no es válido." };
+  return updateHistoryTagsForRecords([recordId], { mode: "replace", tags }, storageOverride);
+}
+
+/**
+ * Applies tag changes to multiple records atomically, with one localStorage write.
+ * Modes: add (union), remove (matching tags), replace (complete replacement).
+ */
+export function updateHistoryTagsForRecords(recordIds, { mode = "add", tags = [] } = {}, storageOverride) {
+  if (!Array.isArray(recordIds) || !["add", "remove", "replace"].includes(mode)) {
+    return { ok: false, updatedCount: 0, error: "La operación de etiquetas no es válida." };
+  }
+  const ids = [...new Set(recordIds.filter((id) => typeof id === "string" && id.length > 0))];
+  if (!ids.length) return { ok: false, updatedCount: 0, error: "Selecciona al menos un registro." };
+  const incoming = normalizeHistoryTags(tags);
+  if (!incoming.ok) return { ok: false, updatedCount: 0, error: incoming.error };
+  const storage = resolveStorage(storageOverride);
+  if (!storage) return { ok: false, updatedCount: 0, error: "El almacenamiento local no está disponible." };
+  const current = loadHistory(storage);
+  if (!current.ok) return { ok: false, updatedCount: 0, error: current.error };
+
+  const selected = new Set(ids);
+  const existing = current.items.filter((item) => selected.has(item.id));
+  if (!existing.length) return { ok: false, updatedCount: 0, error: "No se encontraron los registros seleccionados." };
+  const targetTags = new Map();
+  for (const item of existing) {
+    const currentTags = item.tags ?? [];
+    let nextTags;
+    if (mode === "replace") nextTags = incoming.tags;
+    else if (mode === "add") {
+      const merged = normalizeHistoryTags([...currentTags, ...incoming.tags]);
+      if (!merged.ok) return { ok: false, updatedCount: 0, error: "No se pudieron aplicar las etiquetas a todos los registros: " + merged.error };
+      nextTags = merged.tags;
+    } else {
+      const removed = new Set(incoming.tags);
+      nextTags = currentTags.filter((tag) => !removed.has(tag));
+    }
+    targetTags.set(item.id, nextTags);
+  }
+
+  let updatedCount = 0;
+  const items = current.items.map((item) => {
+    const nextTags = targetTags.get(item.id);
+    const previousTags = item.tags ?? [];
+    if (!nextTags || (nextTags.length === previousTags.length && nextTags.every((tag, index) => tag === previousTags[index]))) return item;
+    updatedCount += 1;
+    return { ...item, tags: nextTags };
+  });
+  if (!updatedCount) return { ok: true, updatedCount: 0, items: current.items };
+  const result = persist(items, storage);
+  return { ...result, updatedCount: result.ok ? updatedCount : 0 };
 }

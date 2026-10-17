@@ -10,7 +10,7 @@
 }
 .history-toolbar {
   display: grid;
-  grid-template-columns: minmax(200px, 1fr) minmax(140px, .35fr) auto;
+  grid-template-columns: minmax(180px, 1fr) minmax(120px, .32fr) minmax(150px, .35fr) auto;
   align-items: end;
   gap: .8rem;
 }
@@ -224,4 +224,62 @@
   .history-bulk-actions .history-delete-button { grid-column: 1 / -1; }
   .history-record-header { flex-wrap: wrap; }
   .history-record-select { width: 100%; }
+}
+
+
+/* Phase 13 — custom tags, tag filtering, and bulk tag management */
+.history-record-tag.tag-custom { border-color: #ddd6fe; background: #f5f3ff; color: #5b21b6; }
+.history-tag-editor {
+  display: grid;
+  gap: .45rem;
+  padding: .85rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-small);
+  background: #fafaff;
+}
+.history-tag-editor[hidden] { display: none; }
+.history-tag-editor label, .history-bulk-tag-tools label {
+  color: var(--color-ink-soft);
+  font-size: .73rem;
+  font-weight: 750;
+}
+.history-tag-editor input, .history-bulk-tag-tools input {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: .6rem .75rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-small);
+  background: #fff;
+  color: var(--color-ink);
+  font: inherit;
+  font-size: .8rem;
+}
+.history-tag-editor p { margin: 0; color: var(--color-muted); font-size: .69rem; line-height: 1.5; }
+.history-tag-editor-actions { display: flex; flex-wrap: wrap; gap: .45rem; }
+.history-tag-editor-actions .button { min-height: 36px; padding: .45rem .7rem; font-size: .72rem; }
+.history-bulk-tag-tools {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto auto;
+  align-items: end;
+  gap: .6rem;
+  padding-top: .8rem;
+  border-top: 1px solid var(--color-border);
+}
+.history-bulk-tag-tools .form-field { min-width: 0; }
+.history-bulk-tag-tools .form-field label { display: block; margin-bottom: .35rem; }
+.history-bulk-tag-tools .button { min-height: 40px; padding: .5rem .75rem; font-size: .72rem; }
+.history-bulk-tag-tools .button:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+@media (max-width: 760px) {
+  .history-toolbar { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .history-search-field { grid-column: 1 / -1; }
+  .history-bulk-tag-tools { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .history-bulk-tag-tools .form-field { grid-column: 1 / -1; }
+}
+@media (max-width: 460px) {
+  .history-toolbar { grid-template-columns: minmax(0, 1fr); }
+  .history-search-field { grid-column: auto; }
+  .history-bulk-tag-tools { grid-template-columns: minmax(0, 1fr); }
+  .history-bulk-tag-tools .form-field { grid-column: auto; }
+  .history-bulk-tag-tools .button { width: 100%; justify-content: center; }
 }
