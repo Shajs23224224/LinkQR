@@ -1,6 +1,7 @@
 import "./history.css";
 import { MAX_QR_PAYLOAD_BYTES } from "../generator/validation.js";
 import { saveGeneratorDraft } from "../generator/generator-draft.js";
+import { queryHistoryRecords } from "./history-query.js";
 import {
   clearHistory,
   createHistoryBackup,
@@ -37,6 +38,13 @@ export function renderHistoryPage({ favoritesOnly = false } = {}) {
     '<section class="history-page-panel" aria-label="' + title + '"><div class="history-toolbar">',
     '<div class="form-field history-search-field"><label for="history-search">Buscar por contenido</label><input id="history-search" class="history-search" type="search" placeholder="Buscar URL o texto…" autocomplete="off" /></div>',
     filter, clear, '</div>',
+    '<section class="history-advanced-filter-panel" aria-label="Filtros avanzados"><div class="history-advanced-fields">',
+    '<div class="form-field"><label for="history-kind-filter">Tipo de contenido</label><select id="history-kind-filter" class="history-source-filter"><option value="all">Todos los tipos</option><option value="url">URL</option><option value="text">Texto</option></select></div>',
+    '<div class="form-field"><label for="history-date-from">Desde</label><input id="history-date-from" class="history-search" type="date" /></div>',
+    '<div class="form-field"><label for="history-date-to">Hasta</label><input id="history-date-to" class="history-search" type="date" /></div>',
+    '<div class="form-field"><label for="history-sort">Ordenar por</label><select id="history-sort" class="history-source-filter"><option value="newest">Más recientes</option><option value="oldest">Más antiguos</option><option value="content-asc">Contenido A–Z</option><option value="favorites-first">Favoritos primero</option><option value="tagged-first">Más etiquetas</option></select></div>',
+    '<button class="button button-secondary history-reset-filters" id="history-reset-filters" type="button">Restablecer filtros</button>',
+    '</div></section>',
     '<p class="history-storage-message" id="history-storage-message" role="status" aria-live="polite" hidden></p>',
     '<div class="history-summary-row"><p id="history-summary" class="history-summary" aria-live="polite"></p><span class="history-local-label">Guardado local</span></div>',
     '<section class="history-bulk-panel" aria-label="Selección múltiple y acciones masivas">',
@@ -195,6 +203,11 @@ export function initHistoryPage({ favoritesOnly = false } = {}) {
   const search = document.querySelector("#history-search");
   const filter = document.querySelector("#history-source-filter");
   const tagFilter = document.querySelector("#history-tag-filter");
+  const kindFilter = document.querySelector("#history-kind-filter");
+  const dateFrom = document.querySelector("#history-date-from");
+  const dateTo = document.querySelector("#history-date-to");
+  const sortFilter = document.querySelector("#history-sort");
+  const resetFilters = document.querySelector("#history-reset-filters");
   const clear = document.querySelector("#history-clear-button");
   const exportButton = document.querySelector("#history-export-button");
   const importFile = document.querySelector("#history-import-file");
@@ -228,7 +241,12 @@ export function initHistoryPage({ favoritesOnly = false } = {}) {
       !(emptyTitle instanceof HTMLHeadingElement) ||
       !(emptyDescription instanceof HTMLParagraphElement) ||
       (!favoritesOnly && !(filter instanceof HTMLSelectElement)) ||
-      !(tagFilter instanceof HTMLSelectElement)) return;
+      !(tagFilter instanceof HTMLSelectElement) ||
+      !(kindFilter instanceof HTMLSelectElement) ||
+      !(dateFrom instanceof HTMLInputElement) ||
+      !(dateTo instanceof HTMLInputElement) ||
+      !(sortFilter instanceof HTMLSelectElement) ||
+      !(resetFilters instanceof HTMLButtonElement)) return;
 
   function render() {
     const data = loadHistory();
@@ -243,14 +261,15 @@ export function initHistoryPage({ favoritesOnly = false } = {}) {
     tagFilter.value = availableTags.includes(previousTag) ? previousTag : "all";
     const availableIds = new Set(all.map((item) => item.id));
     for (const id of selectedIds) if (!availableIds.has(id)) selectedIds.delete(id);
-    const query = search.value.trim().toLocaleLowerCase();
+    const query = search.value;
     const origin = favoritesOnly ? "all" : filter.value;
     const selectedTag = tagFilter.value;
-    const records = all
-      .filter((item) => !favoritesOnly || item.favorite)
-      .filter((item) => origin === "all" || item.source === origin)
-      .filter((item) => selectedTag === "all" || (item.tags ?? []).includes(selectedTag))
-      .filter((item) => !query || item.content.toLocaleLowerCase().includes(query));
+    const queried = queryHistoryRecords(
+      all.filter((item) => !favoritesOnly || item.favorite),
+      { query, source: origin, tag: selectedTag, kind: kindFilter.value,
+        dateFrom: dateFrom.value, dateTo: dateTo.value, sort: sortFilter.value }
+    );
+    const records = queried.items;
 
     visibleRecords = records;
     list.replaceChildren(...records.map((item) => renderRecord(item, selectedIds.has(item.id))));
@@ -272,9 +291,12 @@ export function initHistoryPage({ favoritesOnly = false } = {}) {
     empty.hidden = records.length > 0;
 
     if (!records.length) {
-      if (query || origin !== "all" || selectedTag !== "all") {
+      if (queried.invalidDateRange) {
+        emptyTitle.textContent = "Rango de fechas no válido";
+        emptyDescription.textContent = "Comprueba que la fecha inicial no sea posterior a la fecha final.";
+      } else if (query.trim() || origin !== "all" || selectedTag !== "all" || kindFilter.value !== "all" || dateFrom.value || dateTo.value) {
         emptyTitle.textContent = "No se encontraron coincidencias";
-        emptyDescription.textContent = "Prueba con otra búsqueda o cambia el filtro.";
+        emptyDescription.textContent = "Prueba con otra búsqueda o cambia los filtros.";
       } else if (favoritesOnly) {
         emptyTitle.textContent = "Todavía no tienes favoritos";
         emptyDescription.textContent = "Marca como favorito cualquier registro para encontrarlo aquí.";
@@ -289,6 +311,20 @@ export function initHistoryPage({ favoritesOnly = false } = {}) {
   search.addEventListener("input", render, { signal });
   filter?.addEventListener("change", render, { signal });
   tagFilter.addEventListener("change", render, { signal });
+  kindFilter.addEventListener("change", render, { signal });
+  dateFrom.addEventListener("change", render, { signal });
+  dateTo.addEventListener("change", render, { signal });
+  sortFilter.addEventListener("change", render, { signal });
+  resetFilters.addEventListener("click", () => {
+    search.value = "";
+    if (filter) filter.value = "all";
+    tagFilter.value = "all";
+    kindFilter.value = "all";
+    dateFrom.value = "";
+    dateTo.value = "";
+    sortFilter.value = "newest";
+    render();
+  }, { signal });
   selectAll?.addEventListener("change", () => {
     for (const record of visibleRecords) {
       if (selectAll.checked) selectedIds.add(record.id);
